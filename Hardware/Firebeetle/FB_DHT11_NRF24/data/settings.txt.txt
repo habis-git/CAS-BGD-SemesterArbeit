@@ -1,0 +1,3 @@
+sensorType=DHT11
+sleepTime=5000
+paLevel=low
