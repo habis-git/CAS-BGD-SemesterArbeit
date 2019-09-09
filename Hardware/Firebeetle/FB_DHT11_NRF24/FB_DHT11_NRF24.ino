@@ -15,7 +15,7 @@ int paLevel;
 float Temperature;
 float Humidity;
 int Moisture;
-const uint8_t packetSize = sizeof(float) + 1 + sizeof(float) + 1 + sizeof(int);
+const uint8_t packetSize = 6 + sizeof(float) + 1 + sizeof(float) + 1 + sizeof(int);
 
 // set default sleep time to one minute
 int sleepTime = 60000;
@@ -29,30 +29,40 @@ void setSettingsValue(String argument, String value) {
   if (argument.indexOf ( "sensorType" ) >= 0){ 
     if(value == "DHT11"){
       dhtType = DHT11;
+      Serial.println("DHT Sensor Type is DHT11");
     }else if(value == "DHT21"){
       dhtType = DHT21;
+      Serial.println("DHT Sensor Type is DHT21");
     }else if(value == "DHT22"){
       dhtType = DHT22;
+      Serial.println("DHT Sensor Type is DHT22");
     }
   }
 
   if (argument.indexOf("sleepTime") >= 0){
-    sleepTime = argument.toInt();
+    sleepTime = value.toInt();
+    Serial.print("Sleep Time is ");
+    Serial.println(value);
   }
 
   if (argument.indexOf ( "paLevel" ) >= 0){ 
     if(value == "low"){
       paLevel = RF24_PA_LOW;
+      Serial.println("PALevel is LOW");
     }else if(value == "med"){
       paLevel = RF24_PA_HIGH;
+      Serial.println("PALevel is HIGH");
     }else if(value == "high"){
       paLevel = RF24_PA_MAX;
+      Serial.println("PALevel is MAX");
     }
   }
 }
 
 // Used to control whether this node is sending or receiving
 void setup() {
+  Serial.begin(115200);
+  
   // read settings
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -70,10 +80,12 @@ void setup() {
   {
     line = idFile.readStringUntil ( '\n' ) ;
     line.getBytes(address, sizeof(address));
-    Serial.print("Address of this device is:");
+    Serial.print("Address of this device is ");
     Serial.println(line.c_str());
   }
   idFile.close() ;
+
+  readSettings();
   
   /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 25 & 26 */
   radio = new RF24(25, 26); //CE, CSN
@@ -85,7 +97,6 @@ void setup() {
   pinMode(MOISTSENSOR_PIN, INPUT);
   dht->begin();
 
-  Serial.begin(115200);
   Serial.println(F("Temperature/Moisture measurement started"));
 
   if (radio->begin()) {
@@ -106,7 +117,7 @@ void loop() {
   Moisture = analogRead(MOISTSENSOR_PIN);
 
   char packet[packetSize];
-  sprintf(packet, "%.1f;%.1f;%i", Temperature, Humidity, Moisture);
+  sprintf(packet, "%s;%.1f;%.1f;%i", address, Temperature, Humidity, Moisture);
 
   Serial.println(F("Now sending: "));
   Serial.println(packet);

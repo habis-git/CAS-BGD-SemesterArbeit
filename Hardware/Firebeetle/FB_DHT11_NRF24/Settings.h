@@ -7,7 +7,6 @@ boolean readSettings()
   File        settingsfile ;
 
   settingsfile = SPIFFS.open ( "/settings.txt", "r" ) ;
-  Serial.println("");
   Serial.println("Read settings.txt file");
   while (settingsfile.available())
   {
@@ -48,7 +47,7 @@ void readLine ( const char* str )
   {
     return ;
   }
-  argument.toLowerCase() ;                            // Force to lower case
+
   Wert = value ;
   if ( (inx = Wert.indexOf ( "#" ) ) >= 0 )           // Comment line or partial comment?
   {
