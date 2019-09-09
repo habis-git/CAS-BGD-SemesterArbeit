@@ -17,53 +17,42 @@ PubSubClient client(ethClient);
 
 RF24 radio(7, 8); // CE, CSN
 const byte address[6] = "00001";
-const uint8_t packetSize = 9;
-
-char temperatureTopicPrefix[11] = "temperature";
-char temperatureTopicName[sizeof(temperatureTopicPrefix) + sizeof(address) + 4];
-
-char humidityTopicPrefix[11] = "humidity";
-char humidityTopicName[sizeof(humidityTopicPrefix) + sizeof(address) + 4];
 
 void setup() {
   Serial.begin(115200);
 
-  Serial.println("Initialisiere Ethernet");
+  Serial.println("Init Ethernet");
   client.setServer(server, 1883);
   Ethernet.begin(mac, ip);
 
-  Serial.println("Starte Funkempfänger");
+  Serial.println("Start Receiver");
   radio.begin();
   radio.openReadingPipe(0, address);
   radio.setPALevel(RF24_PA_MIN);
   radio.startListening();
-
-  sprintf(temperatureTopicName, "/%s/%s/", temperatureTopicPrefix, address);
-  Serial.print("Sende Temperatur Daten an das Topic ");
-  Serial.println(temperatureTopicName);
-
-  sprintf(humidityTopicName, "/%s/%s/", humidityTopicPrefix, address);
-  Serial.print("Sende Luftfeuchtigkeit Daten an das Topic ");
-  Serial.println(humidityTopicName);
 }
 void loop() {
   if (radio.available()) {
-    char packet[7];
-    radio.read(&packet, packetSize);
+    char packet[17];
+    radio.read(&packet, sizeof(packet));
 
-    Serial.print("Werte empfangen: ");
+    Serial.print("Received values from sensor: ");
     Serial.println(packet);
+    
+    char* SensorId = strtok(packet, ";");
+    char* Temperature = strtok(NULL, ";");
+    char* Humidity = strtok(NULL, ";");
+    char* SoilHumidity = strtok(NULL, ";");
 
+    char json[100];
+    sprintf(json, "{\"ID\": \"%s\", \"Temp.Air\": %s, \"Hum.Air\": %s, \"Hum.Soil\": %s}", SensorId, Temperature, Humidity, SoilHumidity);
     if (!client.connected()) {
       reconnect();
     }
-    char* Temperature = strtok(packet, ";");
     if (client.connected()) {
-      client.publish(temperatureTopicName, Temperature);
-    }
-    char* Humidity = strtok(NULL, ";");
-    if (client.connected()) {
-      client.publish(humidityTopicName, Humidity);
+      Serial.print("Send data to topic '/weather/' ");
+      client.publish("/weather/", json);
+      Serial.println(json);
     }
   }
 }
@@ -71,16 +60,14 @@ void loop() {
 void reconnect() {
   // Solange wiederholen bis Verbindung wiederhergestellt ist
   while (!client.connected()) {
-    Serial.print("Versuch des MQTT Verbindungsaufbaus...");
+    Serial.print("Connecting to MQTT Server");
     //Versuch die Verbindung aufzunehmen
     if (client.connect("arduinoClient")) {
-      Serial.println("Erfolgreich verbunden!");
-      // Nun versendet der Arduino eine Nachricht in outTopic ...
-      client.publish("test", "Arduino nach Haue telefonieren");
+      Serial.println("Successful connected!");
     } else {
-      Serial.print("Fehler, rc=");
+      Serial.print("Error, rc=");
       Serial.print(client.state());
-      Serial.println(" Nächster Versuch in 5 Sekunden");
+      Serial.println(" Next try in 5 seconds");
       // 5 Sekunden Pause vor dem nächsten Versuch
       delay(5000);
     }
