@@ -3,6 +3,7 @@
 #include "DHT.h"
 #include "SPIFFS.h"
 #include "Settings.h"
+#include "mbedtls/md.h"
 
 // DHT Sensor
 uint8_t DHTPin = 27;
@@ -10,12 +11,14 @@ uint8_t DHTPin = 27;
 uint8_t MOISTSENSOR_PIN = 36;
 
 byte address[6] = "00000";
+const char *key;
 int paLevel;
 
 float Temperature;
 float Humidity;
 int Moisture;
 const uint8_t packetSize = 6 + sizeof(float) + 1 + sizeof(float) + 1 + sizeof(int);
+uint8_t hmacSize = 32;
 
 // set default sleep time to one minute
 int sleepTime = 60000;
@@ -71,7 +74,7 @@ void setup() {
 
   File idFile = SPIFFS.open("/id.txt");
   if (!idFile) {
-    Serial.println("Failed to open file for reading");
+    Serial.println("Failed to open id file for reading");
     return;
   }
 
@@ -84,6 +87,20 @@ void setup() {
     Serial.println(line.c_str());
   }
   idFile.close() ;
+
+  File keyFile = SPIFFS.open("/key");
+  if (!keyFile) {
+    Serial.println("Failed to open key file for reading");
+    return;
+  }
+
+  String keyLine;
+  while (keyFile.available())
+  {
+    String keyString = keyFile.readStringUntil ( '\n' );
+    key = keyString.c_str();
+  }
+  keyFile.close() ;
 
   readSettings();
   
@@ -110,6 +127,22 @@ void setup() {
   radio->setPALevel(paLevel);
   radio->openWritingPipe(address);
 }
+
+void create_hmac(char *payload, byte *hmacResult){
+  mbedtls_md_context_t ctx;
+  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+ 
+  const size_t payloadLength = strlen(payload);
+  const size_t keyLength = strlen(key);            
+ 
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
+  mbedtls_md_hmac_starts(&ctx, (const unsigned char *) key, keyLength);
+  mbedtls_md_hmac_update(&ctx, (const unsigned char *) payload, payloadLength);
+  mbedtls_md_hmac_finish(&ctx, hmacResult);
+  mbedtls_md_free(&ctx);
+}
+
 void loop() {
   Temperature = dht->readTemperature(); // Gets the values of the temperature
   Humidity = dht->readHumidity(); // Gets the values of the humidity
@@ -118,11 +151,24 @@ void loop() {
 
   char packet[packetSize];
   sprintf(packet, "%s;%.1f;%.1f;%i", address, Temperature, Humidity, Moisture);
+  
+  byte hmacResult[hmacSize];
+  create_hmac(packet, hmacResult);
+  char authenticatedMsg[packetSize + sizeof(hmacResult)];
+
+  char hexHmac[hmacSize * 2];
+  for (int cnt = 0; cnt < hmacSize; cnt++)
+  {
+    // convert byte to its ascii representation
+    sprintf(&hexHmac[cnt * 2], "%02X", hmacResult[cnt]);
+  }
+  
+  sprintf(authenticatedMsg, "%s;%s", hexHmac, packet);
 
   Serial.println(F("Now sending: "));
-  Serial.println(packet);
+  Serial.println(authenticatedMsg);
 
-  if (!radio->write( &packet, packetSize )) {
+  if (!radio->write( &authenticatedMsg, sizeof(authenticatedMsg) )) {
     Serial.println(F("failed"));
   }
   // Try again 1s later
