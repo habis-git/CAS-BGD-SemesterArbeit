@@ -5,6 +5,8 @@
 #include "Settings.h"
 #include "mbedtls/md.h"
 
+#define DEBUG
+
 // DHT Sensor
 uint8_t DHTPin = 27;
 // Moisture Sensor
@@ -25,37 +27,42 @@ int sleepTime = 60000;
 
 uint8_t dhtType;
 
+byte sending[32];
+byte source_data[52];
+int pkt, sizeArray, total_pkts;
+bool confirmed, sendArray;
+
 DHT *dht;
 RF24 *radio;
 
 void setSettingsValue(String argument, String value) {
-  if (argument.indexOf ( "sensorType" ) >= 0){ 
-    if(value == "DHT11"){
+  if (argument.indexOf ( "sensorType" ) >= 0) {
+    if (value == "DHT11") {
       dhtType = DHT11;
       Serial.println("DHT Sensor Type is DHT11");
-    }else if(value == "DHT21"){
+    } else if (value == "DHT21") {
       dhtType = DHT21;
       Serial.println("DHT Sensor Type is DHT21");
-    }else if(value == "DHT22"){
+    } else if (value == "DHT22") {
       dhtType = DHT22;
       Serial.println("DHT Sensor Type is DHT22");
     }
   }
 
-  if (argument.indexOf("sleepTime") >= 0){
+  if (argument.indexOf("sleepTime") >= 0) {
     sleepTime = value.toInt();
     Serial.print("Sleep Time is ");
     Serial.println(value);
   }
 
-  if (argument.indexOf ( "paLevel" ) >= 0){ 
-    if(value == "low"){
+  if (argument.indexOf ( "paLevel" ) >= 0) {
+    if (value == "low") {
       paLevel = RF24_PA_LOW;
       Serial.println("PALevel is LOW");
-    }else if(value == "med"){
+    } else if (value == "med") {
       paLevel = RF24_PA_HIGH;
       Serial.println("PALevel is HIGH");
-    }else if(value == "high"){
+    } else if (value == "high") {
       paLevel = RF24_PA_MAX;
       Serial.println("PALevel is MAX");
     }
@@ -65,7 +72,7 @@ void setSettingsValue(String argument, String value) {
 // Used to control whether this node is sending or receiving
 void setup() {
   Serial.begin(115200);
-  
+
   // read settings
   if (!SPIFFS.begin(true)) {
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -103,7 +110,7 @@ void setup() {
   keyFile.close() ;
 
   readSettings();
-  
+
   /* Hardware configuration: Set up nRF24L01 radio on SPI bus plus pins 25 & 26 */
   radio = new RF24(25, 26); //CE, CSN
 
@@ -125,16 +132,18 @@ void setup() {
   // Set the PA Level low to prevent power supply related issues since this is a
   // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
   radio->setPALevel(paLevel);
+  radio->setPayloadSize(128);
+  radio->openReadingPipe(1, address); //Open Reading pipe
   radio->openWritingPipe(address);
 }
 
-void create_hmac(char *payload, byte *hmacResult){
+void create_hmac(char *payload, byte *hmacResult) {
   mbedtls_md_context_t ctx;
   mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
- 
+
   const size_t payloadLength = strlen(payload);
-  const size_t keyLength = strlen(key);            
- 
+  const size_t keyLength = strlen(key);
+
   mbedtls_md_init(&ctx);
   mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
   mbedtls_md_hmac_starts(&ctx, (const unsigned char *) key, keyLength);
@@ -151,7 +160,7 @@ void loop() {
 
   char packet[packetSize];
   sprintf(packet, "%s;%.1f;%.1f;%i", address, Temperature, Humidity, Moisture);
-  
+
   byte hmacResult[hmacSize];
   create_hmac(packet, hmacResult);
   char authenticatedMsg[packetSize + sizeof(hmacResult)];
@@ -162,15 +171,90 @@ void loop() {
     // convert byte to its ascii representation
     sprintf(&hexHmac[cnt * 2], "%02X", hmacResult[cnt]);
   }
-  
+
   sprintf(authenticatedMsg, "%s;%s", hexHmac, packet);
 
-  Serial.println(F("Now sending: "));
+  Serial.println(F("Hashed message: "));
   Serial.println(authenticatedMsg);
 
-  if (!radio->write( &authenticatedMsg, sizeof(authenticatedMsg) )) {
-    Serial.println(F("failed"));
+  sendArray = true;
+  confirmed = true;
+  sizeArray = strlen(authenticatedMsg);  //total length of array
+  Serial.print ("Sizearray: ");
+  Serial.println(sizeArray);
+  total_pkts = sizeArray / 30;
+  if(sizeArray % 30 != 0){
+    total_pkts++;
   }
+
+  // from https://forum.arduino.cc/index.php?topic=233551.0
+  if (sendArray)
+  {
+    while ((pkt < total_pkts) && (confirmed)) { //packet place holder
+      radio->stopListening();      //stop listening to talk
+      if (confirmed) {             //if response confirming it obtained the previous packet, continue
+        pkt++;
+        //Header for each packet
+        sending[0] = pkt;                 //Header for packet number
+        sending[1] = total_pkts;   //total packets sent
+#ifdef DEBUG
+        Serial.print ("Packet: ");
+        Serial.print(pkt);
+        Serial.print(" of ");
+        Serial.println(sending[1]);
+#endif
+        for (int i = 0; i < 30; i++) {    //Next 30 bytes to fill
+          sending[i + 2] = authenticatedMsg[i + ((pkt - 1) * 30)]; //shift sending by 2 (Header) to start at 3rd position
+          //IRsignal -> shift packetnumber*30 for last packet left off
+#ifdef DEBUG
+          Serial.print(i + 2);
+          Serial.print(" = ");
+          Serial.println(sending[i + 2]);
+#endif
+        }
+        confirmed = false;
+        Serial.print("Sending packet of size: ");  //make sure 32 bytes or less
+        Serial.println(sizeof(sending));
+
+        bool ok = radio->write( &sending, sizeof(sending));    //Sends first packet to radio
+
+        if (ok) {
+          Serial.print("Packet Sent: ");
+          Serial.println(pkt);
+        }
+        else {
+          printf("failed.\n\r");
+        }
+
+        byte packetReceived = 0;  //packetReceived (feedback) = 0th packet
+
+        radio->startListening();    //start listening for a response
+        delay(400);
+        radio->read(&packetReceived, sizeof(packetReceived));    //save response
+
+#ifdef DEBUG
+        Serial.print("Packet sent: ");
+        Serial.print(pkt);
+        Serial.print(" PacketReceived: ");
+        Serial.println(packetReceived);
+#endif
+        if (packetReceived == pkt) {  //If packet number received == packet sent
+          confirmed = true;
+          Serial.println("Packet was confirmed, proceed to send next packet.");
+        }
+        else {
+          confirmed = false;
+          sendArray = false;
+          Serial.println("Either nothing sent/no confirmation/Mismatch of packets (resend??)");
+        }
+      }
+    }
+  }
+
+  sendArray = true;//Reset Variables
+  pkt = 0;
+  confirmed = true;
+
   // Try again 1s later
   delay(sleepTime);
 }
