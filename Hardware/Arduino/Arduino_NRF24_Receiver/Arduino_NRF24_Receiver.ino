@@ -5,13 +5,15 @@
 #include "sha256.h"
 #include "keyFile.h"
 
-#define DEBUG
+#define NODEBUG
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
+
+uint8_t hmacSize = 32;
 
 IPAddress ip(192, 168, 1, 130);
 IPAddress server(192, 168, 1, 5);
@@ -25,21 +27,30 @@ const byte address[6] = "00001";
 byte received[90];             //data holder for received data
 bool allReceived;
 
-void printHash(uint8_t* hash) {
-  int i;
-  for (i = 0; i < 32; i++) {
-    Serial.print("0123456789abcdef"[hash[i] >> 4]);
-    Serial.print("0123456789abcdef"[hash[i] & 0xf]);
+char *key;
+int keyLength;
+
+char* convert_hmac_to_string(uint8_t* hash, int hmacSize) {
+  char resultArray[hmacSize * 2];
+  for (int cnt = 0; cnt < hmacSize; cnt++)
+  {
+    sprintf(&resultArray[cnt * 2], "%02X", hash[cnt]);
   }
-  Serial.println();
+  return resultArray;
 }
 
 void setup() {
   Serial.begin(115200);
 
-  Sha256.initHmac(key, 20);
-  Sha256.print("Hi There");
-  printHash(Sha256.resultHmac());
+  //Serial.print("hmac key: ");
+  //Serial.println(key);
+
+  int key_len = key_str.length() + 1; 
+    
+  keyLength = key_len;
+  key = (char*) malloc(key_len * sizeof(char));
+  // Copy it over 
+  key_str.toCharArray(key, key_len);
 
   Serial.println("Init Ethernet");
   client.setServer(server, 1883);
@@ -77,14 +88,16 @@ void loop() {
         Serial.print(pkt);
         Serial.print(" of ");
         Serial.println(data[1]);
+#endif
         for (int i = 2; i < 32; i++) {
+#ifdef DEBUG
           Serial.print(i);
           Serial.print(" = ");
           Serial.println(data[i]);
-          Serial.println((pkt -1) * 30 + (i - 2));
-          received[(pkt -1) * 30 + (i - 2)] = data[i];
-        }
+          Serial.println((pkt - 1) * 30 + (i - 2));
 #endif
+          received[(pkt - 1) * 30 + (i - 2)] = data[i];
+        }
         delay(20);
         radio.stopListening();    //stop listening to transmit response of packet received.
         bool ok = radio.write(&pkt, sizeof(pkt));  //send packet number back to confirm
@@ -104,21 +117,47 @@ void loop() {
     Serial.print("Received values from sensor: ");
     Serial.println((char*)received);
 
-    char* hmac = strtok(received, ";");
-    char* SensorId = strtok(NULL, ";");
-    char* Temperature = strtok(NULL, ";");
-    char* Humidity = strtok(NULL, ";");
-    char* SoilHumidity = strtok(NULL, ";");
+    char* hmac = strtok(received, ":");
+    char* data = strtok(NULL, ":");
+    Serial.print("data: ");
+    Serial.println(data);
+    Serial.print("Received   hmac: ");
+    Serial.println(hmac);
 
-    char json[100];
-    sprintf(json, "{\"ID\": \"%s\", \"Temp.Air\": %s, \"Hum.Air\": %s, \"Hum.Soil\": %s}", SensorId, Temperature, Humidity, SoilHumidity);
-    if (!client.connected()) {
-      reconnect();
+    Sha256.initHmac(key, keyLength);
+    Sha256.print(data);
+    uint8_t* calculatedHmac = Sha256.resultHmac();
+    Serial.print("Calculated hmac: ");
+    char calculatedHmac_char[hmacSize * 2];
+    for (int cnt = 0; cnt < hmacSize; cnt++)
+    {
+      // convert byte to its ascii representation
+      sprintf(&calculatedHmac_char[cnt * 2], "%02X", calculatedHmac[cnt]);
     }
-    if (client.connected()) {
-      Serial.print("Send data to topic '/weather/' ");
-      client.publish("/weather/", json);
-      Serial.println(json);
+    Serial.println(calculatedHmac_char);
+
+    uint8_t authorizationCheck = strcmp(calculatedHmac_char, hmac);
+    Serial.print("Authorization Check: ");
+    Serial.println(authorizationCheck);
+
+    if (authorizationCheck != 0) {
+      Serial.println("Hmac not matching, not authorized or tampered message! Message rejected");
+    } else {
+      char* SensorId = strtok(data, ";");
+      char* Temperature = strtok(NULL, ";");
+      char* Humidity = strtok(NULL, ";");
+      char* SoilHumidity = strtok(NULL, ";");
+
+      char json[100];
+      sprintf(json, "{\"ID\": \"%s\", \"Temp.Air\": %s, \"Hum.Air\": %s, \"Hum.Soil\": %s}", SensorId, Temperature, Humidity, SoilHumidity);
+      if (!client.connected()) {
+        reconnect();
+      }
+      if (client.connected()) {
+        Serial.print("Send data to topic '/weather/' ");
+        client.publish("/weather/", json);
+        Serial.println(json);
+      }
     }
   }
 }

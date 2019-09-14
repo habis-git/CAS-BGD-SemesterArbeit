@@ -5,7 +5,7 @@
 #include "Settings.h"
 #include "mbedtls/md.h"
 
-#define DEBUG
+#define NODEBUG
 
 // DHT Sensor
 uint8_t DHTPin = 27;
@@ -13,7 +13,8 @@ uint8_t DHTPin = 27;
 uint8_t MOISTSENSOR_PIN = 36;
 
 byte address[6] = "00000";
-const char *key;
+char *key;
+int keyLength;
 int paLevel;
 
 float Temperature;
@@ -105,7 +106,15 @@ void setup() {
   while (keyFile.available())
   {
     String keyString = keyFile.readStringUntil ( '\n' );
-    key = keyString.c_str();
+    // Length (with one extra character for the null terminator)
+    int key_len = keyString.length() + 1; 
+    
+    keyLength = key_len;
+    key = (char*) malloc(key_len * sizeof(char));
+    // Copy it over 
+    keyString.toCharArray(key, key_len);
+    Serial.print("key: "),
+    Serial.println(key);
   }
   keyFile.close() ;
 
@@ -137,7 +146,9 @@ void setup() {
   radio->openWritingPipe(address);
 }
 
-void create_hmac(char *payload, byte *hmacResult) {
+void create_hmac(char *payload, byte *hmacResult, char* key) {
+  Serial.print("key in hmac: ");
+  Serial.println(key);
   mbedtls_md_context_t ctx;
   mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
 
@@ -160,9 +171,11 @@ void loop() {
 
   char packet[packetSize];
   sprintf(packet, "%s;%.1f;%.1f;%i", address, Temperature, Humidity, Moisture);
-
+  Serial.print("packet: ");
+  Serial.println(packet);
+  
   byte hmacResult[hmacSize];
-  create_hmac(packet, hmacResult);
+  create_hmac(packet, hmacResult, key);
   char authenticatedMsg[packetSize + sizeof(hmacResult)];
 
   char hexHmac[hmacSize * 2];
@@ -172,7 +185,7 @@ void loop() {
     sprintf(&hexHmac[cnt * 2], "%02X", hmacResult[cnt]);
   }
 
-  sprintf(authenticatedMsg, "%s;%s", hexHmac, packet);
+  sprintf(authenticatedMsg, "%s:%s", hexHmac, packet);
 
   Serial.println(F("Hashed message: "));
   Serial.println(authenticatedMsg);
@@ -180,8 +193,10 @@ void loop() {
   sendArray = true;
   confirmed = true;
   sizeArray = strlen(authenticatedMsg);  //total length of array
+#ifdef DEBUG
   Serial.print ("Sizearray: ");
   Serial.println(sizeArray);
+#endif
   total_pkts = sizeArray / 30;
   if(sizeArray % 30 != 0){
     total_pkts++;
