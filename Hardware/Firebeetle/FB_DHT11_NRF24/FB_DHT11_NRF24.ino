@@ -5,21 +5,22 @@
 #include "Settings.h"
 #include "mbedtls/md.h"
 
-#define NODEBUG
+#define DEBUG
+#define NO_RAW_DATA_DEBUG
 
 // DHT Sensor
 uint8_t DHTPin = 27;
 // Moisture Sensor
-uint8_t MOISTSENSOR_PIN = 36;
+uint8_t MOISTSENSOR_PIN = 4;
 
-byte address[6] = "00000";
+const int pipes_length = 5;
+const byte pipes[pipes_length][6] = { "Ardu0", "1Node", "2Node", "3Node", "4Node" };
+
+int id;
 char *key;
 int keyLength;
 int paLevel;
 
-float Temperature;
-float Humidity;
-int Moisture;
 const uint8_t packetSize = 6 + sizeof(float) + 1 + sizeof(float) + 1 + sizeof(int);
 uint8_t hmacSize = 32;
 
@@ -73,6 +74,7 @@ void setSettingsValue(String argument, String value) {
 // Used to control whether this node is sending or receiving
 void setup() {
   Serial.begin(115200);
+  Serial.println("Starting initialization, reading configuration");
 
   // read settings
   if (!SPIFFS.begin(true)) {
@@ -90,8 +92,8 @@ void setup() {
   while (idFile.available())
   {
     line = idFile.readStringUntil ( '\n' ) ;
-    line.getBytes(address, sizeof(address));
-    Serial.print("Address of this device is ");
+    id = line.toInt();
+    Serial.print("Id of this device is ");
     Serial.println(line.c_str());
   }
   idFile.close() ;
@@ -107,14 +109,14 @@ void setup() {
   {
     String keyString = keyFile.readStringUntil ( '\n' );
     // Length (with one extra character for the null terminator)
-    int key_len = keyString.length() + 1; 
-    
+    int key_len = keyString.length() + 1;
+
     keyLength = key_len;
     key = (char*) malloc(key_len * sizeof(char));
-    // Copy it over 
+    // Copy it over
     keyString.toCharArray(key, key_len);
     Serial.print("key: "),
-    Serial.println(key);
+                 Serial.println(key);
   }
   keyFile.close() ;
 
@@ -140,15 +142,27 @@ void setup() {
   }
   // Set the PA Level low to prevent power supply related issues since this is a
   // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
+
+  radio->begin();
   radio->setPALevel(paLevel);
-  radio->setPayloadSize(128);
-  radio->openReadingPipe(1, address); //Open Reading pipe
-  radio->openWritingPipe(address);
+  radio->setRetries(3, 5); // delay, count
+  radio->openReadingPipe(1, pipes[id]); //Open Reading pipe
+  radio->openWritingPipe(pipes[id]);
+#ifdef DEBUG
+  Serial.print(F("Listening to pipe: "));
+  char c_address[8];
+  sprintf(c_address, "-> %s", pipes[id]);
+  Serial.println(c_address);
+  Serial.print(F("Writing to pipe: "));
+  c_address[8];
+  sprintf(c_address, "-> %s", pipes[id]);
+  Serial.println(c_address);
+#endif
+
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
 void create_hmac(char *payload, byte *hmacResult, char* key) {
-  Serial.print("key in hmac: ");
-  Serial.println(key);
   mbedtls_md_context_t ctx;
   mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
 
@@ -164,16 +178,24 @@ void create_hmac(char *payload, byte *hmacResult, char* key) {
 }
 
 void loop() {
-  Temperature = dht->readTemperature(); // Gets the values of the temperature
-  Humidity = dht->readHumidity(); // Gets the values of the humidity
+  digitalWrite(LED_BUILTIN, HIGH);
+  float Temperature = dht->readTemperature(); // Gets the values of the temperature
+  float Humidity = dht->readHumidity(); // Gets the values of the humidity
 
-  Moisture = analogRead(MOISTSENSOR_PIN);
+  int moist_analog_value = analogRead(MOISTSENSOR_PIN);
+  Serial.print(F("Moisture analog value: "));
+  Serial.println(moist_analog_value);
+  float Moisture = (4100 - moist_analog_value) * (100.0 / 2600);
+
+  // truncate to sensible values
+  Moisture = min((float)100.0, Moisture);
+  Moisture = max((float)0.0, Moisture);
 
   char packet[packetSize];
-  sprintf(packet, "%s;%.1f;%.1f;%i", address, Temperature, Humidity, Moisture);
+  sprintf(packet, "%i;%.1f;%.1f;%.1f", id, Temperature, Humidity, Moisture);
   Serial.print("packet: ");
   Serial.println(packet);
-  
+
   byte hmacResult[hmacSize];
   create_hmac(packet, hmacResult, key);
   char authenticatedMsg[packetSize + sizeof(hmacResult)];
@@ -198,7 +220,7 @@ void loop() {
   Serial.println(sizeArray);
 #endif
   total_pkts = sizeArray / 30;
-  if(sizeArray % 30 != 0){
+  if (sizeArray % 30 != 0) {
     total_pkts++;
   }
 
@@ -206,7 +228,6 @@ void loop() {
   if (sendArray)
   {
     while ((pkt < total_pkts) && (confirmed)) { //packet place holder
-      radio->stopListening();      //stop listening to talk
       if (confirmed) {             //if response confirming it obtained the previous packet, continue
         pkt++;
         //Header for each packet
@@ -221,13 +242,15 @@ void loop() {
         for (int i = 0; i < 30; i++) {    //Next 30 bytes to fill
           sending[i + 2] = authenticatedMsg[i + ((pkt - 1) * 30)]; //shift sending by 2 (Header) to start at 3rd position
           //IRsignal -> shift packetnumber*30 for last packet left off
-#ifdef DEBUG
+#ifdef RAW_DATA_DEBUG
           Serial.print(i + 2);
           Serial.print(" = ");
           Serial.println(sending[i + 2]);
 #endif
         }
         confirmed = false;
+        radio->stopListening();      //stop listening to talk
+
         Serial.print("Sending packet of size: ");  //make sure 32 bytes or less
         Serial.println(sizeof(sending));
 
@@ -236,31 +259,39 @@ void loop() {
         if (ok) {
           Serial.print("Packet Sent: ");
           Serial.println(pkt);
+          byte packetReceived = 0;  //packetReceived (feedback) = 0th packet
+
+          radio->startListening();    //start listening for a response
+          int retry = 0;
+          while (!confirmed && retry < 5) {
+            delay(50);
+            if (radio->available()) {
+              radio->read(&packetReceived, sizeof(packetReceived));    //save response
+
+#ifdef DEBUG
+              Serial.print("Packet sent: ");
+              Serial.print(pkt);
+              Serial.print(" PacketReceived: ");
+              Serial.println(packetReceived);
+#endif
+              if (packetReceived == pkt) {  //If packet number received == packet sent
+                confirmed = true;
+                Serial.println("Packet was confirmed, proceed to send next packet.");
+              }
+              else {
+                confirmed = false;
+                sendArray = false;
+                Serial.println("Either nothing sent/no confirmation/Mismatch of packets (resend??)");
+              }
+            }
+            retry++;
+          }
+          radio->stopListening();
         }
         else {
           printf("failed.\n\r");
-        }
-
-        byte packetReceived = 0;  //packetReceived (feedback) = 0th packet
-
-        radio->startListening();    //start listening for a response
-        delay(400);
-        radio->read(&packetReceived, sizeof(packetReceived));    //save response
-
-#ifdef DEBUG
-        Serial.print("Packet sent: ");
-        Serial.print(pkt);
-        Serial.print(" PacketReceived: ");
-        Serial.println(packetReceived);
-#endif
-        if (packetReceived == pkt) {  //If packet number received == packet sent
-          confirmed = true;
-          Serial.println("Packet was confirmed, proceed to send next packet.");
-        }
-        else {
           confirmed = false;
           sendArray = false;
-          Serial.println("Either nothing sent/no confirmation/Mismatch of packets (resend??)");
         }
       }
     }
@@ -269,7 +300,7 @@ void loop() {
   sendArray = true;//Reset Variables
   pkt = 0;
   confirmed = true;
-
+  digitalWrite(LED_BUILTIN, LOW);
   // Try again 1s later
   delay(sleepTime);
 }
