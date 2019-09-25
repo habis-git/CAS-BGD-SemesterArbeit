@@ -35,6 +35,7 @@
 \usepackage{siunitx} % Scientific Units and number setting
 \usepackage{listings} % For Program-Code
 \usepackage{minted}
+\usepackage{caption}
 
 \usepackage{glossaries}
 
@@ -140,6 +141,8 @@ Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen V
 \end{figure}
 
  \section{Sensoren}
+ \subsection{Temperatur und Luftfeuchtigkeit}
+ \subsubsection{DHT22}
  \begin{figure}[htp]
   \begin{center}
     \includegraphics[width=5cm, left]{Bilder/DHT22.jpg}
@@ -148,46 +151,34 @@ Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen V
   \label{fig:dht22}
 \end{figure}
 DHT22 im Onlineshop \footnote{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
+\subsubsection{DHT11}
+\subsection{Bodenfeuchtigkeit}
 
- \begin{figure}[htp]
-  \begin{center}
-    \includegraphics[width=5cm, left]{Bilder/Soil-2.jpg}
-  \end{center}
-    \caption{Kapazitiver Bodenfeuchtesensor V1.2}
-  \label{fig:soil1.2}
-\end{figure}
+\begin{center}
+\includegraphics[width=5cm, left]{Bilder/Soil-2.jpg}%
+\captionof{figure}{Kapazitiver Bodenfeuchtesensor V1.2}\label{labelname}%
+\end{center}
 Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
 
  \section{Funkverbindung}
- \begin{figure}[htp]
-  \begin{center}
-    \includegraphics[width=5cm, left]{Bilder/ESP32-Arduino.png}
-  \end{center}
-\end{figure}
-
-  \begin{figure}[htp]
-  \begin{center}
-    \includegraphics[width=10cm, left]{Bilder/NRF24.jpg}
-  \end{center}
-    \caption{NRF24L01+ Funkmodul}
-  \label{fig:dhtnrf24}
-\end{figure}
+ 
+\begin{center}
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=7cm]{Bilder/ESP32-Arduino.png} % first figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{Funkverbindung}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=5cm]{Bilder/NRF24.jpg} % second figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{NRF24L01+ Funkmodul}
+    \end{minipage}
+\end{center}
 NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
  
  \section{Software}
-Beispiele für Programmlistings:
-
-Dasselbe Listing mit dem listings-Paket
-\lstset{language=C}
-\begin{lstlisting}
-#include <iostream>
-
-int main(int argc, char* argv[]) {
-   using namespace std;
-   cout << ''Hello world!'' << endl;
-   return 0;
-}
-\end{lstlisting}
 
 %
 \chapter{IoT Gateway}
@@ -199,6 +190,10 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 \section{Software}
 \chapter{Speicherung und Visualisierung}
 \section{Übersicht}
+\begin{center}
+\includegraphics[width=17cm, left]{Bilder/Raspberry-Software.png}%
+\captionof{figure}{Verwendete Software}\label{labelname}%
+\end{center}
 \section{Hardware}
 \section{Visualisierung}
 \begin{listing}
@@ -216,7 +211,7 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 \caption{JSON example} 
 \label{json-example}
 \end{listing}
-\lstinputlisting[language=HTML]{../Grafana/Dashboard/messwerte.json}
+
 % List of Figures
 \listoffigures
 % List of Tables
