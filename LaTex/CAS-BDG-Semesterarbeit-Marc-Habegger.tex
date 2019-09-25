@@ -34,6 +34,7 @@
 \usepackage[singlelinecheck=off]{caption}
 \usepackage{siunitx} % Scientific Units and number setting
 \usepackage{listings} % For Program-Code
+\usepackage{minted}
 
 \usepackage{glossaries}
 
@@ -118,6 +119,13 @@
 
 Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen Verfügbarkeit von Daten auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
 
+\begin{figure}[htp]
+  \begin{center}
+    \includegraphics[width=18cm, left]{Bilder/Overview.png}
+  \end{center}
+    \caption{Systemaufbau}
+\end{figure}
+
 \chapter{Einleitung}
 \section{Übersicht}
 \section{Hardware}
@@ -151,10 +159,15 @@ DHT22 im Onlineshop \footnote{https://www.bastelgarage.ch/dht22-temperatur-und-l
 Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
 
  \section{Funkverbindung}
- 
+ \begin{figure}[htp]
+  \begin{center}
+    \includegraphics[width=5cm, left]{Bilder/ESP32-Arduino.png}
+  \end{center}
+\end{figure}
+
   \begin{figure}[htp]
   \begin{center}
-    \includegraphics[width=5cm, left]{Bilder/NRF24.jpg}
+    \includegraphics[width=10cm, left]{Bilder/NRF24.jpg}
   \end{center}
     \caption{NRF24L01+ Funkmodul}
   \label{fig:dhtnrf24}
@@ -184,6 +197,26 @@ int main(int argc, char* argv[]) {
 \subsection{Zugriffsschutz}
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
+\chapter{Speicherung und Visualisierung}
+\section{Übersicht}
+\section{Hardware}
+\section{Visualisierung}
+\begin{listing}
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{js}
+{     
+    "firstName": "John"
+    "lastName" : "Smith",
+    "age" : 25
+}
+\end{minted}
+\caption{JSON example} 
+\label{json-example}
+\end{listing}
+\lstinputlisting[language=HTML]{../Grafana/Dashboard/messwerte.json}
 % List of Figures
 \listoffigures
 % List of Tables
@@ -195,7 +228,7 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
    \bibitem{whyHmac} What is HMAC Authentication and why is it useful? \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
     \bibitem{esp32-hmac} ESP32 Arduino: Applying the HMAC SHA-256 mechanism \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
     \bibitem{hmacOnline} Online HMAC Code Generator \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
-    \bibitem{ref3} Dummy entry three.
+    \bibitem{nrf24} NRF24L01+ Funkmodul Treiber für Arduino und ESP32 \url{http://tmrh20.github.io/RF24/index.html}
     \bibitem{ref4} Dummy entry four.
   \end{thebibliography}
 %Index
