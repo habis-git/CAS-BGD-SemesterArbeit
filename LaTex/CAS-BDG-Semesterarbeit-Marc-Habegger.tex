@@ -1,5 +1,5 @@
 \documentclass[
-  10pt, % Fontsize
+  12pt, % Fontsize
   a4paper, % papersize
   twoside, % For twosided documents
   openright, % Chapters start always at a odd page
@@ -36,6 +36,8 @@
 \usepackage{listings} % For Program-Code
 \usepackage{minted}
 \usepackage{caption}
+\usepackage[export]{adjustbox}
+\usepackage[document]{ragged2e} % left-alignment for text
 
 \usepackage{glossaries}
 
@@ -129,18 +131,32 @@ Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen V
 
 \chapter{Einleitung}
 \section{Übersicht}
+Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern sowie die leichte Beschaffung auch innerhalb der Schweiz bestimmt. Der Verzicht auf kommerzielle Systeme erlaubt eine grosse Flexibilität in der Kombination von Funktionalitäten.
 \section{Hardware}
+
 \chapter{Aufbau der Sensoren}
 \section{Mikrokontroller}
-\begin{figure}[htp]
-  \begin{center}
-    \includegraphics[width=5cm, left]{Bilder/Firebeetle.jpg}
-  \end{center}
-    \caption{Fireebeetle mit dem ESP32 Mikrokontroller}
-  \label{fig:test1}
+Ein sehr beliebter Mikrokontroller ist der ESP32 von Espressif \cite{espressif} welcher durch grossen Funktionsumfang und einen recht geringen Preis überzeugen kann. Ein Vorteil ist ebenfalls die Möglichkeit der Programmierung durch die Arduino\cite{arduino} IDE welche frei verfügbar ist und die Entwicklung stark vereinfacht. Es existieren viele verschiedene Mikrocontroller welche den ESP32 Baustein verwenden, für dieses Projekt kam der Firebeetle \cite{firebeetle} von DF Robot zum Einsatz.  \footnote{https://www.bastelgarage.ch/firebeetle-esp32-iot-mikrocontroller-mit-wifi}
+
+\begin{figure}[ht]
+	\begin{minipage}[t]{0.5\linewidth}
+		\centering
+		\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/Firebeetle.jpg} 
+		 \caption{Firebeetle mit dem ESP32 Mikrokontroller}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Der ESP32 besitzt sowohl WLAN als auch Bluetooth LE Schnittstellen. Diese wurden jedoch aus Gründen des Stromverbrauchs (WLAN) oder der Reichweite (Bluetooth LE) in diesem Projekt nicht verwendet.\break \break
+	 Der Firebeetle\cite{firebeetle} Baustein hat sowohl die Möglichkeit einer Stromversorgung mit 5 Volt als auch mit 3.7 Volt, womit er direkt durch Lithium-Ionen Akkus betrieben werden kann.
+	\end{minipage}
 \end{figure}
 
  \section{Sensoren}
+ Es existiert eine grosse Anzahl an verschiedenen Sensoren welche auch für Privatanwendern nutzbar sind. In diesem Projekt wurden Sensoren gewählt für welche frei verfügbare Bibliotheken in einer Version für den ESP32 vorhanden sind. Grundsätzlich wird bei den Sensoren unterschieden zwischen solchen die 
+ \begin{itemize}
+	 \item Digitale Werte liefern die direkt einer Einheit (Grad Celsius) oder Prozentangabe (Luftfeuchtigkeit) entsprechen
+	  \item Analoge Messwerte welche auf eine Einheit umgerechnet werden müssen
+\end{itemize}
+ 
  \subsection{Temperatur und Luftfeuchtigkeit}
  \subsubsection{DHT22}
  \begin{figure}[htp]
@@ -151,7 +167,20 @@ Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen V
   \label{fig:dht22}
 \end{figure}
 DHT22 im Onlineshop \footnote{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
+
 \subsubsection{DHT11}
+Als alternative zu dem oben genannten DHT22 gibt es eine billigere Variante mit dem Namen DHT11. \footnote{https://www.bastelgarage.ch/dht11-temperatur-und-luftfeuchtigkeitssensor?search=dht11}
+\begin{figure}[ht]
+	\begin{minipage}[t]{0.5\linewidth}
+		\centering
+		\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/DHT11.jpg} 
+		 \caption{DHT11 Luft- und Feuchtigkeitssensor}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Der DHT11 Sensor hat eine geringere Auflösung als der DHT22, ist ansonsten aber gleich verwendbar.
+	\end{minipage}
+\end{figure}
+
 \subsection{Bodenfeuchtigkeit}
 
 \begin{center}
@@ -161,7 +190,6 @@ DHT22 im Onlineshop \footnote{https://www.bastelgarage.ch/dht22-temperatur-und-l
 Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
 
  \section{Funkverbindung}
- 
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
         \centering
@@ -177,7 +205,18 @@ Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensore
     \end{minipage}
 \end{center}
 NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
- 
+ \begin{listing}[h]
+ \begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=10pt,
+               tabsize=4,
+               fontsize=\small]{js}
+ 3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2
+ \end{minted}
+  \caption{Format des Datensatz über Funk}
+ \end{listing}
+
  \section{Software}
 
 %
@@ -219,12 +258,16 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 % Glossary
 \printglossary
 % Bibliography
+
+\renewcommand\bibname{Linkverzeichnis}
 \begin{thebibliography}{99}
-   \bibitem{whyHmac} What is HMAC Authentication and why is it useful? \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
-    \bibitem{esp32-hmac} ESP32 Arduino: Applying the HMAC SHA-256 mechanism \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
-    \bibitem{hmacOnline} Online HMAC Code Generator \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
-    \bibitem{nrf24} NRF24L01+ Funkmodul Treiber für Arduino und ESP32 \url{http://tmrh20.github.io/RF24/index.html}
-    \bibitem{ref4} Dummy entry four.
+   \bibitem{whyHmac} What is HMAC Authentication and why is it useful?\break \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
+    \bibitem{esp32-hmac} ESP32 Arduino: Applying the HMAC SHA-256 mechanism\break \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
+    \bibitem{hmacOnline} Online HMAC Code Generator\break \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
+    \bibitem{nrf24} NRF24L01+ Funkmodul Treiber für Arduino und ESP32\break \url{http://tmrh20.github.io/RF24/index.html}
+    \bibitem{espressif} Herstellerseite Espressif für den ESP32\break \url{https://www.espressif.com/en/products/hardware/esp32/overview}
+    \bibitem{arduino} Arduino Herstellerseite mit der gleichnamigen IDE und vielen Bibliotheken und Tutorials\break \url{https://www.arduino.cc/}
+    \bibitem{firebeetle} Herstellerseite des Firebeetle Mikrokontrollers\break \url{https://www.dfrobot.com/product-1590.html}
   \end{thebibliography}
 %Index
 \addcontentsline{toc}{chapter}{Index}
