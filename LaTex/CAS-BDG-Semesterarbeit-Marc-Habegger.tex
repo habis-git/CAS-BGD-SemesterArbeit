@@ -2,7 +2,7 @@
   12pt, % Fontsize
   a4paper, % papersize
   twoside, % For twosided documents
-  openright, % Chapters start always at a odd page
+  openany, % Chapters start always at a odd page
   numbers=noenddot, % No final dots in Sectionnumbers, e.g 1.2 instead of 1.2.
   BCOR=5mm, % Correction length for lost space from binding
   parskip=half*, %No indent but spacing between paragraphs
@@ -36,6 +36,7 @@
 \usepackage{listings} % For Program-Code
 \usepackage{minted}
 \usepackage{caption}
+\captionsetup[figure]{font=footnotesize, labelfont=small}
 \usepackage[export]{adjustbox}
 \usepackage[document]{ragged2e} % left-alignment for text
 
@@ -90,6 +91,9 @@
 \makeindex
 \makeglossaries
 
+% Variablen für diese Arbeit
+\newcommand{\compImgSize}{4cm}
+
 \begin{document}
  
 \newglossaryentry{IoT}
@@ -119,85 +123,74 @@
 %**************************************************************************
 %\part{Part One}
 \chapter*{Management Summary}
-
 Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen Verfügbarkeit von Daten auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
 
-\begin{figure}[htp]
   \begin{center}
     \includegraphics[width=18cm, left]{Bilder/Overview.png}
+     \captionsetup{justification=centering}
+      \captionof{figure}{Systemaufbau Funknetzwerk}
   \end{center}
-    \caption{Systemaufbau}
-\end{figure}
+   
+Das realisierte Netzwerk besteht aus mehreren Sensoren welche Messdaten über Funk an ein MQTT-Gateway senden welches wieder über das Netzwerk mit der Datenbank verbunden ist. Für die Speicherung der Daten wird eine Zeitreihendatenbank verwendet welche speziell für die Behandlung von Messwerten optimiert ist.
 
+  \begin{center}
+    \includegraphics[width=14cm, left]{Bilder/Overview-2.png}
+     \captionsetup{justification=centering}
+      \captionof{figure}{Systemaufbau}
+  \end{center}
+  Schlussendlich werden die Daten visualisiert und können über einen Browser betrachtet werden. Beim erreichen oder unterschreiten selbst definierter Schwellwerte kann ein Alarm ausgelöst werden.
 \chapter{Einleitung}
 \section{Übersicht}
 Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern sowie die leichte Beschaffung auch innerhalb der Schweiz bestimmt. Der Verzicht auf kommerzielle Systeme erlaubt eine grosse Flexibilität in der Kombination von Funktionalitäten.
 \section{Hardware}
 
-\chapter{Aufbau der Sensoren}
+\chapter{Sensor Plattform}
 \section{Mikrokontroller}
 Ein sehr beliebter Mikrokontroller ist der ESP32 von Espressif \cite{espressif} welcher durch grossen Funktionsumfang und einen recht geringen Preis überzeugen kann. Ein Vorteil ist ebenfalls die Möglichkeit der Programmierung durch die Arduino\cite{arduino} IDE welche frei verfügbar ist und die Entwicklung stark vereinfacht. Es existieren viele verschiedene Mikrocontroller welche den ESP32 Baustein verwenden, für dieses Projekt kam der Firebeetle \cite{firebeetle} von DF Robot zum Einsatz.  \footnote{https://www.bastelgarage.ch/firebeetle-esp32-iot-mikrocontroller-mit-wifi}
-
-\begin{figure}[ht]
-	\begin{minipage}[t]{0.5\linewidth}
-		\centering
-		\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/Firebeetle.jpg} 
-		 \caption{Firebeetle mit dem ESP32 Mikrokontroller}
-	\end{minipage}%
-	\begin{minipage}[t]{0.5\linewidth}
-	Der ESP32 besitzt sowohl WLAN als auch Bluetooth LE Schnittstellen. Diese wurden jedoch aus Gründen des Stromverbrauchs (WLAN) oder der Reichweite (Bluetooth LE) in diesem Projekt nicht verwendet.\break \break
-	 Der Firebeetle\cite{firebeetle} Baustein hat sowohl die Möglichkeit einer Stromversorgung mit 5 Volt als auch mit 3.7 Volt, womit er direkt durch Lithium-Ionen Akkus betrieben werden kann.
-	\end{minipage}
-\end{figure}
-
- \section{Sensoren}
+\begin{center}
+\begin{minipage}[t]{0.5\linewidth}
+	\centering
+	\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/Firebeetle.jpg} 
+	 \captionof{figure}{Firebeetle mit dem ESP32 Mikrokontroller}
+\end{minipage}%
+\begin{minipage}[t]{0.5\linewidth}
+Der ESP32 besitzt sowohl WLAN als auch Bluetooth LE Schnittstellen. Diese wurden jedoch aus Gründen des Stromverbrauchs (WLAN) oder der Reichweite (Bluetooth LE) in diesem Projekt nicht verwendet.\break \break
+ Der Firebeetle\cite{firebeetle} Baustein hat sowohl die Möglichkeit einer Stromversorgung mit 5 Volt als auch mit 3.7 Volt, womit er direkt durch Lithium-Ionen Akkus betrieben werden kann.
+\end{minipage}
+\end{center}
+\section{Sensoren}
  Es existiert eine grosse Anzahl an verschiedenen Sensoren welche auch für Privatanwendern nutzbar sind. In diesem Projekt wurden Sensoren gewählt für welche frei verfügbare Bibliotheken in einer Version für den ESP32 vorhanden sind. Grundsätzlich wird bei den Sensoren unterschieden zwischen solchen die 
  \begin{itemize}
 	 \item Digitale Werte liefern die direkt einer Einheit (Grad Celsius) oder Prozentangabe (Luftfeuchtigkeit) entsprechen
 	  \item Analoge Messwerte welche auf eine Einheit umgerechnet werden müssen
 \end{itemize}
- 
- \subsection{Temperatur und Luftfeuchtigkeit}
- \subsubsection{DHT22}
- \begin{figure}[htp]
-  \begin{center}
-    \includegraphics[width=5cm, left]{Bilder/DHT22.jpg}
-  \end{center}
-    \caption{Temperatur und Luftfeuchtigkeitsmesser DHT22}
-  \label{fig:dht22}
-\end{figure}
-DHT22 im Onlineshop \footnote{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
+Für dieses Projekt wurden mehrere Sensoren ausgewählt und kombiniert:
+\begin{itemize}
+	\item Luft Temperatur- und Luft Feuchtigkeitssensoren DHT11 [\ref{DHT11}] und DHT22 [\ref{DHT22}]
+	\item Kapazitiver Bodenfeuchtesensor V1.2 [\ref{moistV1.2}]
+\end{itemize}
+\section{Aufbau}
+Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei Digitale Pins für CE und CSN welche frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte dann kann dies bei Initialisierung des Funkmoduls angegeben werden: \mint{c}|radio = new RF24(25, 26); //CE, CSN|
+Der Daten-Input des Temperatur Sensors benötigt einen Digitalen Eingang welchen ich auf den Pin 27 gesetzt habe. Der Bodenfeuchtigkeitssensor hat einen analogen Ausgang welchen ich mit Pin 4 verbunden hab. Falls andere Pins verwendet werden so können die Variablen am Anfang des Programms angepasst werden:
+\begin{minted}{c}
+// DHT Sensor
+uint8_t DHTPin = 27;
+// Moisture Sensor
+uint8_t MOISTSENSOR_PIN = 4;
+\end{minted}
+Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku mit Strom versorgt werden. Wenn ein Akku direkt angeschlossen werden soll hat es auf der Rückseite  unterhalb des USB Anschlusses zwei Lötaugen. Ein so angeschlossener Akku kann danach über die USB Buchse geladen werden, der ESP32 enthält zu diesem Zweck eine Lade-Elektronik.
 
-\subsubsection{DHT11}
-Als alternative zu dem oben genannten DHT22 gibt es eine billigere Variante mit dem Namen DHT11. \footnote{https://www.bastelgarage.ch/dht11-temperatur-und-luftfeuchtigkeitssensor?search=dht11}
-\begin{figure}[ht]
-	\begin{minipage}[t]{0.5\linewidth}
-		\centering
-		\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/DHT11.jpg} 
-		 \caption{DHT11 Luft- und Feuchtigkeitssensor}
-	\end{minipage}%
-	\begin{minipage}[t]{0.5\linewidth}
-	Der DHT11 Sensor hat eine geringere Auflösung als der DHT22, ist ansonsten aber gleich verwendbar.
-	\end{minipage}
-\end{figure}
-
-\subsection{Bodenfeuchtigkeit}
-
-\begin{center}
-\includegraphics[width=5cm, left]{Bilder/Soil-2.jpg}%
-\captionof{figure}{Kapazitiver Bodenfeuchtesensor V1.2}\label{labelname}%
-\end{center}
-Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
-
-\subsection{Aufbau}
-\begin{figure}[htp]
   \begin{center}
     \includegraphics[width=17cm, left]{Bilder/Sensor-Design_Steckplatine.png}
-  \end{center}
-    \caption{Verdrahtung der Komponenten}
-\end{figure}
+    \captionsetup{justification=centering}
+    \captionof{figure}{Verdrahtung der Komponenten}
+   \end{center}
 
- \section{Funkverbindung}
+
+ \section{Funkverbindung mit dem MQTT Gateway}
+ Da die Sensoren nicht WLAN als Funktechnik verwenden können sie nicht direkt auf den MQTT Server verbinden und Nachrichten senden. Diese Aufgabe übernimmt das MQTT-Gateway welches auf der einen Seite ebenfalls mit einem NRF24\ref{nrf24} Funkmodul ausgerüstet ist und andererseits eine Ethernet Netzwerkanbindung hat.
+ 
+ Jedes Funkmodul kann mit 5 anderen Modulen kommunizieren, dabei muss jedes Modul eine eigene Adresse verwenden unter der es senden und empfangen kann.
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
         \centering
@@ -205,36 +198,70 @@ Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensore
         \captionsetup{justification=centering}
         \captionof{figure}{Funkverbindung}
     \end{minipage}\hfill
-    \begin{minipage}[b]{0.45\textwidth}
+    \begin{minipage}[b]{0.45\textwidth}\label{nrf24}
         \centering
-        \includegraphics[width=5cm]{Bilder/NRF24.jpg} % second figure itself
+        \includegraphics[width=\compImgSize]{Bilder/NRF24.jpg} % second figure itself
         \captionsetup{justification=centering}
         \captionof{figure}{NRF24L01+ Funkmodul}
     \end{minipage}
 \end{center}
-NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
+Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikation der Sensoren über eine einzigartige Id unabhängig vom Programmcode vorgenommen werden kann [\ref{config}].
+\begin{center}
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=9cm]{Bilder/NRF24Kommunikation.png}
+        \captionsetup{justification=centering}
+        \captionof{figure}{Funkkanäle des NRF24L01}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.45\textwidth}
+        \centering
+        \includegraphics[width=7cm]{Bilder/NRF24Kommunikation-2.png} % second figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{Addressierung Funkmodule}
+    \end{minipage}
+\end{center}
+Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{HMAC} eingesetzt.
  \begin{listing}[h]
- \begin{minted}[frame=single,
-               framesep=3mm,
-               linenos=true,
-               xleftmargin=10pt,
-               tabsize=4,
-               fontsize=\small]{js}
+ \begin{minted}{js}
  3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2
  \end{minted}
   \caption{Format des Datensatz über Funk}
  \end{listing}
 
  \section{Software}
+ \subsection{Konfiguration eines Sensors}\label{config}
 
 %
 \chapter{IoT Gateway}
 \section{Übersicht}
 \section{Hardware}
 \section{Funkverbindung}
+\subsection{Aufbau}
+\begin{figure}[htp]
+  \begin{center}
+    \includegraphics[width=12cm, left]{Bilder/MQTT-Gateway-Design_Steckplatine.png}
+  \end{center}
+    \caption{Verdrahtung der Komponenten}
+\end{figure}
 \subsection{Zugriffsschutz}
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
+\begin{listing}
+\begin{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4]{js}
+{     
+    "ID": 0001, 
+    "Temp.Air": 22.6,
+    "Hum.Air": 78.1, 
+    "Hum.Soil": 43.7
+}
+\end{minted}
+\caption{JSON example} 
+\label{json-example}
+\end{listing}
 \chapter{Speicherung und Visualisierung}
 \section{Übersicht}
 \begin{center}
@@ -243,22 +270,56 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 \end{center}
 \section{Hardware}
 \section{Visualisierung}
-\begin{listing}
-\begin{minted}[frame=single,
-               framesep=3mm,
-               linenos=true,
-               xleftmargin=21pt,
-               tabsize=4]{js}
-{     
-    "firstName": "John"
-    "lastName" : "Smith",
-    "age" : 25
-}
-\end{minted}
-\caption{JSON example} 
-\label{json-example}
-\end{listing}
 
+\chapter{Verwendete Bauteile}
+\section{ESP32 Mikrokontroller}
+\begin{center}
+    \includegraphics[width=14cm, left]{Bilder/FireBeetleBoard.png}
+    \captionsetup{justification=raggedright}
+    \captionof{figure}{Anschlüsse des Firebeetle}
+\end{center}
+ \section{Sensoren}
+ \subsection{Temperatur und Luftfeuchtigkeit}
+ \subsubsection{DHT22}\label{DHT22}
+\begin{flushleft}
+	\begin{minipage}[t]{0.5\linewidth}
+		\centering
+    		\includegraphics[width=\compImgSize, left]{Bilder/DHT22.jpg}
+    		\captionof{figure}{Temperatur und Luftfeuchtigkeitsmesser DHT22}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	DHT22 im Onlineshop \footnotemark
+	\end{minipage}
+	\footnotetext{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
+\end{flushleft}
+
+\subsubsection{DHT11}\label{DHT11}
+\begin{flushleft}
+	\begin{minipage}[t]{0.5\linewidth}
+		\centering
+		\includegraphics[ width=\compImgSize, left]{Bilder/DHT11.jpg} 
+		 \captionof{figure}{DHT11 Luft- und Feuchtigkeitssensor}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Als Alternative zu dem oben genannten DHT22 gibt es eine billigere Variante mit dem Namen DHT11 \footnotemark.
+	Der DHT11 Sensor hat eine geringere Auflösung als der DHT22, ist ansonsten aber gleich verwendbar.
+	\end{minipage}
+	 \footnotetext{https://www.bastelgarage.ch/dht11-temperatur-und-luftfeuchtigkeitssensor}
+\end{flushleft}
+
+\subsection{Bodenfeuchtigkeit}\label{moistV1.2}
+\begin{center}
+\includegraphics[width=\compImgSize, left]{Bilder/Soil-2.jpg}%
+\captionof{figure}{Kapazitiver Bodenfeuchtesensor V1.2}\label{labelname}%
+\end{center}
+Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
+\subsection{Funk}
+\begin{flushleft}
+        \includegraphics[width=\compImgSize]{Bilder/NRF24.jpg} % second figure itself
+        \captionsetup{justification=raggedright}
+        \captionof{figure}{NRF24L01+ Funkmodul}
+\end{flushleft}
+NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
 % List of Figures
 \listoffigures
 % List of Tables
