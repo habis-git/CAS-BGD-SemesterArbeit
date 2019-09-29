@@ -34,9 +34,17 @@
 \usepackage[singlelinecheck=off]{caption}
 \usepackage{siunitx} % Scientific Units and number setting
 \usepackage{listings} % For Program-Code
-\usepackage{minted}
+\usepackage{minted}[frame=single,
+               framesep=3mm,
+               linenos=true,
+               xleftmargin=21pt,
+               tabsize=4,
+               breaklines]
+
 \usepackage{caption}
 \captionsetup[figure]{font=footnotesize, labelfont=small}
+\newcommand{\source}[1]{\caption*{Quelle: {#1}} }
+
 \usepackage[export]{adjustbox}
 \usepackage[document]{ragged2e} % left-alignment for text
 
@@ -61,7 +69,7 @@
 %%
 
 % Topic of Study
-\degreeprogramme{Semesterarbeit CAS Big Data}
+\degreeprogramme{CAS Big Data}
 % Expert
 \expert{Max Kleiner}
 % Version
@@ -166,7 +174,7 @@ Der ESP32 besitzt sowohl WLAN als auch Bluetooth LE Schnittstellen. Diese wurden
 \end{itemize}
 Für dieses Projekt wurden mehrere Sensoren ausgewählt und kombiniert:
 \begin{itemize}
-	\item Luft Temperatur- und Luft Feuchtigkeitssensoren DHT11 [\ref{DHT11}] und DHT22 [\ref{DHT22}]
+	\item Lufttemperatur- und Luftfeuchtigkeitssensoren DHT11 [\ref{DHT11}] und DHT22 [\ref{DHT22}]
 	\item Kapazitiver Bodenfeuchtesensor V1.2 [\ref{moistV1.2}]
 \end{itemize}
 \section{Aufbau}
@@ -220,38 +228,50 @@ Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikatio
         \captionof{figure}{Addressierung Funkmodule}
     \end{minipage}
 \end{center}
+\subsection{Absicherung der Funkverbindung}
 Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{HMAC} eingesetzt.
- \begin{listing}[h]
- \begin{minted}{js}
- 3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2
- \end{minted}
-  \caption{Format des Datensatz über Funk}
- \end{listing}
+Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Hash-Wert erweitert
+\mint{html}| 3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2|
 
  \section{Software}
  \subsection{Konfiguration eines Sensors}\label{config}
-
+ Jeder Sensor benötigt einige Parameter:
+ \begin{description}
+\item[Id] Identifiziert den Sensor
+\item[key] Der geheime Schlüssel um den \Gls{HMAC} zu berechnen. Dieser Schlüssel muss auf den Sensoren wie auf dem Gateway identisch sein
+\item[sensorType] Typ des Temperatursensor, entweder DHT11 oder DHT22
+\item[sleepTime] Wartezeit zwischen zwei Messungen in Millisekunden
+\item[paLevel] Funkstärke des NRF24 Moduls, erlaubte Werte sind 'low', 'med und 'high'
+\end{description}
+ 
+\begin{center}
+    \begin{minipage}[t]{0.45\textwidth}
+    \raisebox{\dimexpr-\height+\ht\strutbox\relax}{\includegraphics[width=7cm, left]{Bilder/ESP32-Memory-Organisation.png}}
+    \captionsetup{justification=centering}
+    \captionof{figure}{Speicher-Aufteilung ESP32}
+\end{minipage}\hfill
+    \begin{minipage}[t]{0.45\textwidth}
+       Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen werden so müssen die Konfigurationsparameter nur einmal festgelegt werden und ändern sich, wenn überhaupt, nur selten.
+       \includegraphics[width=7cm, left]{Bilder/Firebettle-Project-FolderAndFiles.png}
+    \end{minipage}
+\end{center}
 %
 \chapter{IoT Gateway}
 \section{Übersicht}
 \section{Hardware}
 \section{Funkverbindung}
 \subsection{Aufbau}
-\begin{figure}[htp]
+\begin{center}
   \begin{center}
     \includegraphics[width=12cm, left]{Bilder/MQTT-Gateway-Design_Steckplatine.png}
   \end{center}
-    \caption{Verdrahtung der Komponenten}
-\end{figure}
+    \captionof{figure}{Verdrahtung der Komponenten}
+\end{center}
 \subsection{Zugriffsschutz}
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
 \begin{listing}
-\begin{minted}[frame=single,
-               framesep=3mm,
-               linenos=true,
-               xleftmargin=21pt,
-               tabsize=4]{js}
+\begin{minted}{js}
 {     
     "ID": 0001, 
     "Temp.Air": 22.6,
@@ -259,18 +279,61 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
     "Hum.Soil": 43.7
 }
 \end{minted}
-\caption{JSON example} 
+\caption{Sensor Datensatz in JSON Format} 
 \label{json-example}
 \end{listing}
 \chapter{Speicherung und Visualisierung}
 \section{Übersicht}
+Für die Speicherung und Verarbeitung der gesammelten Sensordaten sind mehrere Softwarekomponenten zuständig.
 \begin{center}
 \includegraphics[width=17cm, left]{Bilder/Raspberry-Software.png}%
 \captionof{figure}{Verwendete Software}\label{labelname}%
 \end{center}
+ \begin{description}
+\item[MQTT Broker] Die von dem MQTT-Gateway geschickten Nachrichten werden durch Mosquitto \cite{mosquitto} in einer Queue bis zu einer weiteren Verarbeitung gespeichert
+\item[Datentransfer] Um die Daten aus einer (oder mehreren) MQTT Queue in eine Datenbank zu transferieren wird Telegraf \cite{telegraf} mit dem MQTT Plugin benutzt \cite{telegrafmqtt}
+\end{description}
 \section{Hardware}
+\section{MQTT Broker}
+\subsection{Installation}
+\begin{minted}{Bash}
+sudo apt-get install -y mosquitto mosquitto-clients
+   \end{minted}
+\section{Datenspeicherung}
+  \begin{center}
+    \includegraphics[width=\textwidth]{Bilder/InfluxDB-2.png}
+    \captionsetup{justification=centering}
+    \captionof{figure}{Übersicht Influx Software}
+    \source{\url{www.influxdata.com}}
+   \end{center}
+   \subsection{Installation}
+   Die Installationsquelle ist unterschiedlich für die verschiedenen Linux Distributionen. Wenn wie in meinem Fall die Raspian Distribution in der Version 'buster' verwendet wird kann das benötigte Repository mit folgenden Kommandos hinzugefügt werden:
+ \begin{minted}[breaklines]{Bash}
+curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
+sudo apt install apt-transport-https
+echo "deb https://repos.influxdata.com/debian buster stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
+\end{minted}
+Die Installation ist danach schnell gemacht:
+ \begin{minted}{Bash}
+sudo apt-get update && sudo apt-get install influxdb
+sudo systemctl unmask influxdb.service
+   \end{minted}
+   Danach muss der Service noch gestartet werden:
+    \begin{minted}{Bash}
+sudo systemctl start influxdb
+   \end{minted}
+   \subsection{Datenbank einrichten}
+   
 \section{Visualisierung}
-
+\subsection{Installation}
+    \begin{minted}[breaklines]{Bash}
+wget https://github.com/fg2it/grafana-on-raspberry/releases/download/v5.1.4/grafana_5.1.4_armhf.deb
+sudo apt-get install -y adduser libfontconfig1
+sudo dpkg -i grafana_5.1.4_armhf.deb
+sudo systemctl enable grafana-server
+sudo systemctl start grafana-server
+sudo systemctl enable grafana-server.service
+   \end{minted}
 \chapter{Verwendete Bauteile}
 \section{ESP32 Mikrokontroller}
 \begin{center}
@@ -330,13 +393,19 @@ NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf2
 
 \renewcommand\bibname{Linkverzeichnis}
 \begin{thebibliography}{99}
-   \bibitem{whyHmac} What is HMAC Authentication and why is it useful?\break \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
-    \bibitem{esp32-hmac} ESP32 Arduino: Applying the HMAC SHA-256 mechanism\break \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
-    \bibitem{hmacOnline} Online HMAC Code Generator\break \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
-    \bibitem{nrf24} NRF24L01+ Funkmodul Treiber für Arduino und ESP32\break \url{http://tmrh20.github.io/RF24/index.html}
-    \bibitem{espressif} Herstellerseite Espressif für den ESP32\break \url{https://www.espressif.com/en/products/hardware/esp32/overview}
-    \bibitem{arduino} Arduino Herstellerseite mit der gleichnamigen IDE und vielen Bibliotheken und Tutorials\break \url{https://www.arduino.cc/}
-    \bibitem{firebeetle} Herstellerseite des Firebeetle Mikrokontrollers\break \url{https://www.dfrobot.com/product-1590.html}
+   \bibitem{whyHmac}What is HMAC Authentication and why is it useful?\break \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
+    \bibitem{esp32-hmac}ESP32 Arduino: Applying the HMAC SHA-256 mechanism\break \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
+    \bibitem{hmacOnline}Online HMAC Code Generator\break \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
+    \bibitem{nrf24}NRF24L01+ Funkmodul Treiber für Arduino und ESP32\break \url{http://tmrh20.github.io/RF24/index.html}
+    \bibitem{espressif}Herstellerseite Espressif für den ESP32\break \url{https://www.espressif.com/en/products/hardware/esp32/overview}
+    \bibitem{arduino}Arduino Herstellerseite mit der gleichnamigen IDE und vielen Bibliotheken und Tutorials\break \url{https://www.arduino.cc/}
+    \bibitem{firebeetle}Herstellerseite des Firebeetle Mikrokontrollers\break \url{https://www.dfrobot.com/product-1590.html}
+    \bibitem{uploader}Erweiterung für die Arduino IDE um Dateien in den Flash Speicher des ESP32 zu laden \break \url{https://github.com/me-no-dev/arduino-esp32fs-plugin}
+    \bibitem{mosquitto}Open Source MQTT Broker Mosquitto\break \url{https://mosquitto.org/}
+    \bibitem{telegraf} Server Agent welcher Daten aus verschiedenen Quellen sammelt und weiterleitet \break \url{https://www.influxdata.com/time-series-platform/telegraf/}
+    \bibitem{telegrafmqtt}MQTT Plugin für Telegraf\break \url{https://github.com/influxdata/telegraf/tree/master/plugins/inputs/mqtt_consumer}
+    \bibitem{influx} InfluxDB, Open Source Zeitreihendatenbank \break \url{https://www.influxdata.com/products/influxdb-overview/}
+    \bibitem{grafana} Datenvisualierungs-Software Grafana\break \url{https://grafana.com/}
   \end{thebibliography}
 %Index
 \addcontentsline{toc}{chapter}{Index}
