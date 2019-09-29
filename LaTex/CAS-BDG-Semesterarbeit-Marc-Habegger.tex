@@ -45,6 +45,8 @@
 \captionsetup[figure]{font=footnotesize, labelfont=small}
 \newcommand{\source}[1]{\caption*{Quelle: {#1}} }
 
+\usepackage{xcolor}
+
 \usepackage[export]{adjustbox}
 \usepackage[document]{ragged2e} % left-alignment for text
 
@@ -143,6 +145,15 @@
     description={Verfahren zur Absicherung von gesendeten Nachrichten welches mit einer Hash-Funktion und einem geheimen Schlüssel arbeitet.\break
     \url{https://de.wikipedia.org/wiki/Keyed-Hash_Message_Authentication_Code}}
 }
+
+\newglossaryentry{MQTT}
+{
+    name=Message Queuing Telemetry Transport,
+    description={Offenes Nachrichtenprotokoll für Machine-to-Machine-Kommunikation (M2M), das die Übertragung von Telemetriedaten in Form von Nachrichten zwischen Geräten ermöglicht.\break
+    \url{https://de.wikipedia.org/wiki/MQTT}}
+}
+
+\newacronym[see={[Glossary:]{HMAC}}]{hmac}{HMAC}{Keyed-Hash Message Authentication Code}
 
 \maketitle
 %**************************************************************************
@@ -255,13 +266,23 @@ Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikatio
     \end{minipage}
 \end{center}
 \subsection{Absicherung der Funkverbindung}
-Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{HMAC} eingesetzt.
+Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{hmac} eingesetzt.
 Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Hash-Wert erweitert
 \mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2|
 
  \section{Software}
+ \subsection{Verwendete Bibliotheken}
+
+  \begin{description}
+\item[SPI library] Ansteuerung der Sensoren \cite{spi}
+\item[mbed TLS] Berechnung des \Gls{hmac} \cite{mbedTLS}
+\item[RF24] Funkmodul \cite{nrf24}
+\item[DHT-sensor-library] Luft- und Feuchtigkeitssensor \cite{dht}
+ \end{description}
+Einige der aufgeführten Bibliotheken können direkt über die Bibliotheksverwaltung der Arduino IDE installiert werden. Ansonsten können die Bibliotheken über den Link (führt meistens auf github.com) heruntergeladen und von Hand installiert werden. 
+{\color{red}Achtung: Es gibt viele Bibliotheken mit ähnlichem Namen und Beschreibung. Falls das kompilieren fehlschlägt bitte prüfen ob die richtige Bibliothek eingebunden wurde.}
+
  \subsection{Konfiguration eines Sensors}\label{config}
- 
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
        Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen werden so müssen die Konfigurationsparameter nur einmal festgelegt werden und ändern sich, wenn überhaupt, nur selten.
@@ -318,16 +339,23 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 \section{Software}
 \subsection{Konfiguration}
 Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
-\begin{forest}
-	    for tree={font=\sffamily, grow'=0,
-	    folder indent=.9em, folder icons,
-	    edge=densely dotted}
-       [Arduino{\_}NRF24{\_}Receiver
-	    	[Arduino{\_}NRF24{\_}Receiver.ino, is file]
-	    	[keyFile.h, is file]
-	    ]
-\end{forest}
-Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
+\begin{center}
+    \begin{minipage}[b]{0.45\textwidth}
+    	Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.45\textwidth}
+	\begin{forest}
+		    for tree={font=\sffamily, grow'=0,
+		    folder indent=.9em, folder icons,
+		    edge=densely dotted}
+	       [Arduino{\_}NRF24{\_}Receiver
+		    	[Arduino{\_}NRF24{\_}Receiver.ino, is file]
+		    	[keyFile.h, is file]
+		    ]
+	\end{forest}
+	\end{minipage}
+\end{center}
+
 \begin{listing}
 \begin{minted}{js}
 {     
@@ -454,8 +482,12 @@ NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf2
 \begin{thebibliography}{99}
    \bibitem{whyHmac}What is HMAC Authentication and why is it useful?\break \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
     \bibitem{esp32-hmac}ESP32 Arduino: Applying the HMAC SHA-256 mechanism\break \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
+    \bibitem{mbedTLS} mbed TLS, Library für den ESP32 welche viele Kryptografische Funktionen implementiert\break \url{https://tls.mbed.org/}
+    \bibitem{spi} Standard Bibliothek sowohl für den Arduino wie auch den ESP32 welche die Kommunikation mit anderen Komponenten, in diesem Fall die einzelnen Sensor Module, übernimmt\break \url{https://www.arduino.cc/en/Reference/SPI}
+    \bibitem{rfh24} Bibliothek für den nRF24L01 Baustein welche sowohl auf dem Arduino als auch dem ESP32 verwendbar ist \break \url{https://github.com/nRF24/RF24}
     \bibitem{hmacOnline}Online HMAC Code Generator\break \url{https://www.freeformatter.com/hmac-generator.html#ad-output}
     \bibitem{nrf24}NRF24L01+ Funkmodul Treiber für Arduino und ESP32\break \url{http://tmrh20.github.io/RF24/index.html}
+    \bibitem{dht} Bibliothek für die beiden Sensoren DHT11 und DHT22 sowohl für Arduino als auch den ESP32 \break \url{https://github.com/adafruit/DHT-sensor-library}
     \bibitem{espressif}Herstellerseite Espressif für den ESP32\break \url{https://www.espressif.com/en/products/hardware/esp32/overview}
     \bibitem{arduino}Arduino Herstellerseite mit der gleichnamigen IDE und vielen Bibliotheken und Tutorials\break \url{https://www.arduino.cc/}
     \bibitem{firebeetle}Herstellerseite des Firebeetle Mikrokontrollers\break \url{https://www.dfrobot.com/product-1590.html}
