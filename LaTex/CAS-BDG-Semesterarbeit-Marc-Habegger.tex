@@ -50,6 +50,32 @@
 
 \usepackage{glossaries}
 
+% definition for directory tree with forest
+\usepackage[edges]{forest}
+
+\definecolor{foldercolor}{RGB}{124,166,198}
+
+\tikzset{pics/folder/.style={code={%
+    \node[inner sep=0pt, minimum size=#1](-foldericon){};
+    \node[folder style, inner sep=0pt, minimum width=0.3*#1, minimum height=0.6*#1, above right, xshift=0.05*#1] at (-foldericon.west){};
+    \node[folder style, inner sep=0pt, minimum size=#1] at (-foldericon.center){};}
+    },
+    pics/folder/.default={20pt},
+    folder style/.style={draw=foldercolor!80!black,top color=foldercolor!40,bottom color=foldercolor}
+}
+
+\forestset{is file/.style={edge path'/.expanded={%
+        ([xshift=\forestregister{folder indent}]!u.parent anchor) |- (.child anchor)},
+        inner sep=1pt},
+    this folder size/.style={edge path'/.expanded={%
+        ([xshift=\forestregister{folder indent}]!u.parent anchor) |- (.child anchor) pic[solid]{folder=#1}}, inner xsep=0.6*#1},
+    folder tree indent/.style={before computing xy={l=#1}},
+    folder icons/.style={folder, this folder size=#1, folder tree indent=3*#1},
+    folder icons/.default={12pt},
+}
+
+% end definition directory tree
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Settings 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -231,30 +257,50 @@ Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikatio
 \subsection{Absicherung der Funkverbindung}
 Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{HMAC} eingesetzt.
 Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Hash-Wert erweitert
-\mint{html}| 3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2|
+\mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2|
 
  \section{Software}
  \subsection{Konfiguration eines Sensors}\label{config}
+ 
+\begin{center}
+    \begin{minipage}[b]{0.45\textwidth}
+       Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen werden so müssen die Konfigurationsparameter nur einmal festgelegt werden und ändern sich, wenn überhaupt, nur selten.
+ \break
+ \break
+      \begin{forest}
+	    for tree={font=\sffamily, grow'=0,
+	    folder indent=.9em, folder icons,
+	    edge=densely dotted}
+       [FB{\_}DHT11{\_}NRF24
+	    	[FB{\_}DHT11{\_}NRF24.ino, is file]
+	    	[Settings.h, is file]
+		      [data, this folder size=15pt
+		          [id.txt, is file]
+		          [key, is file]
+		          [settings.txt, is file]
+			]
+	    ]
+	  \end{forest}
+	  \captionof{figure}{Verzeichnisstruktur Sensor}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.45\textwidth}
+    \raisebox{\dimexpr-\height+\ht\strutbox\relax}{\includegraphics[width=7cm, left]{Bilder/ESP32-Memory-Organisation.png}}
+    \captionsetup{justification=centering}
+    \captionof{figure}{Speicher-Aufteilung ESP32}
+	\end{minipage}
+\end{center}
+
  Jeder Sensor benötigt einige Parameter:
  \begin{description}
-\item[Id] Identifiziert den Sensor
-\item[key] Der geheime Schlüssel um den \Gls{HMAC} zu berechnen. Dieser Schlüssel muss auf den Sensoren wie auf dem Gateway identisch sein
+\item[Id] Identifiziert den Sensor, gespeichert in der Datei id.txt
+\item[key] Der geheime Schlüssel um den \Gls{HMAC} zu berechnen, gespeichert in der Datei key. Dieser Schlüssel muss auf den Sensoren wie auf dem Gateway identisch sein.
+\end{description}
+Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
+ \begin{description}
 \item[sensorType] Typ des Temperatursensor, entweder DHT11 oder DHT22
 \item[sleepTime] Wartezeit zwischen zwei Messungen in Millisekunden
 \item[paLevel] Funkstärke des NRF24 Moduls, erlaubte Werte sind 'low', 'med und 'high'
 \end{description}
- 
-\begin{center}
-    \begin{minipage}[t]{0.45\textwidth}
-    \raisebox{\dimexpr-\height+\ht\strutbox\relax}{\includegraphics[width=7cm, left]{Bilder/ESP32-Memory-Organisation.png}}
-    \captionsetup{justification=centering}
-    \captionof{figure}{Speicher-Aufteilung ESP32}
-\end{minipage}\hfill
-    \begin{minipage}[t]{0.45\textwidth}
-       Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen werden so müssen die Konfigurationsparameter nur einmal festgelegt werden und ändern sich, wenn überhaupt, nur selten.
-       \includegraphics[width=7cm, left]{Bilder/Firebettle-Project-FolderAndFiles.png}
-    \end{minipage}
-\end{center}
 %
 \chapter{IoT Gateway}
 \section{Übersicht}
@@ -270,6 +316,18 @@ Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Has
 \subsection{Zugriffsschutz}
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
+\subsection{Konfiguration}
+Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
+\begin{forest}
+	    for tree={font=\sffamily, grow'=0,
+	    folder indent=.9em, folder icons,
+	    edge=densely dotted}
+       [Arduino{\_}NRF24{\_}Receiver
+	    	[Arduino{\_}NRF24{\_}Receiver.ino, is file]
+	    	[keyFile.h, is file]
+	    ]
+\end{forest}
+Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
 \begin{listing}
 \begin{minted}{js}
 {     
@@ -282,6 +340,7 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl
 \caption{Sensor Datensatz in JSON Format} 
 \label{json-example}
 \end{listing}
+
 \chapter{Speicherung und Visualisierung}
 \section{Übersicht}
 Für die Speicherung und Verarbeitung der gesammelten Sensordaten sind mehrere Softwarekomponenten zuständig.
