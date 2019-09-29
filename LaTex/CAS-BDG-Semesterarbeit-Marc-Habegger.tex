@@ -124,14 +124,13 @@
 \setcounter{secnumdepth}{4}
 \setcounter{tocdepth}{4}
 
-\makeindex
-\makeglossaries
-
 % Variablen für diese Arbeit
 \newcommand{\compImgSize}{4cm}
 
-\begin{document}
- 
+% Glossar Einträge
+\makeindex
+\makeglossaries
+
 \newglossaryentry{IoT}
 {
     name=Internet of Things,
@@ -154,6 +153,8 @@
 }
 
 \newacronym[see={[Glossary:]{HMAC}}]{hmac}{HMAC}{Keyed-Hash Message Authentication Code}
+
+\begin{document}
 
 \maketitle
 %**************************************************************************
@@ -314,7 +315,7 @@ Einige der aufgeführten Bibliotheken können direkt über die Bibliotheksverwal
  Jeder Sensor benötigt einige Parameter:
  \begin{description}
 \item[Id] Identifiziert den Sensor, gespeichert in der Datei id.txt
-\item[key] Der geheime Schlüssel um den \Gls{HMAC} zu berechnen, gespeichert in der Datei key. Dieser Schlüssel muss auf den Sensoren wie auf dem Gateway identisch sein.
+\item[key] Der geheime Schlüssel um den \Gls{hmac} zu berechnen, gespeichert in der Datei key. Dieser Schlüssel muss auf den Sensoren wie auf dem Gateway identisch sein.
 \end{description}
 Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
  \begin{description}
@@ -335,7 +336,7 @@ Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
     \captionof{figure}{Verdrahtung der Komponenten}
 \end{center}
 \subsection{Zugriffsschutz}
-Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{HMAC}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
+Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
 \subsection{Konfiguration}
 Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
