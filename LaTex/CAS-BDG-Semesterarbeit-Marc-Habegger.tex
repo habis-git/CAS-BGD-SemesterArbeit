@@ -34,12 +34,15 @@
 \usepackage[singlelinecheck=off]{caption}
 \usepackage{siunitx} % Scientific Units and number setting
 \usepackage{listings} % For Program-Code
-\usepackage{minted}[frame=single,
-               framesep=3mm,
-               linenos=true,
-               xleftmargin=21pt,
-               tabsize=4,
-               breaklines]
+
+\usepackage{minted}
+\setminted[arduino]{
+    linenos=true,
+    breaklines=true,
+    encoding=utf8,
+    fontsize=\footnotesize,
+}
+\usemintedstyle{manni}
 
 \usepackage{caption}
 \captionsetup[figure]{font=footnotesize, labelfont=small}
@@ -218,7 +221,7 @@ Für dieses Projekt wurden mehrere Sensoren ausgewählt und kombiniert:
 \section{Aufbau}
 Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei Digitale Pins für CE und CSN welche frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte dann kann dies bei Initialisierung des Funkmoduls angegeben werden: \mint{c}|radio = new RF24(25, 26); //CE, CSN|
 Der Daten-Input des Temperatur Sensors benötigt einen Digitalen Eingang welchen ich auf den Pin 27 gesetzt habe. Der Bodenfeuchtigkeitssensor hat einen analogen Ausgang welchen ich mit Pin 4 verbunden hab. Falls andere Pins verwendet werden so können die Variablen am Anfang des Programms angepasst werden:
-\begin{minted}{c}
+\begin{minted}{arduino}
 // DHT Sensor
 uint8_t DHTPin = 27;
 // Moisture Sensor
@@ -234,7 +237,7 @@ Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku m
 
 
  \section{Funkverbindung mit dem MQTT Gateway}
- Da die Sensoren nicht WLAN als Funktechnik verwenden können sie nicht direkt auf den MQTT Server verbinden und Nachrichten senden. Diese Aufgabe übernimmt das MQTT-Gateway welches auf der einen Seite ebenfalls mit einem NRF24\ref{nrf24} Funkmodul ausgerüstet ist und andererseits eine Ethernet Netzwerkanbindung hat.
+ Da die Sensoren nicht WLAN als Funktechnik verwenden können sie nicht direkt auf den MQTT Server verbinden und Nachrichten senden. Diese Aufgabe übernimmt das MQTT-Gateway welches auf der einen Seite ebenfalls mit einem NRF24 [\ref{nrf24}] Funkmodul ausgerüstet ist und andererseits eine Ethernet Netzwerkanbindung hat.
  
  Jedes Funkmodul kann mit 5 anderen Modulen kommunizieren, dabei muss jedes Modul eine eigene Adresse verwenden unter der es senden und empfangen kann.
 \begin{center}
@@ -323,21 +326,68 @@ Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
 \item[sleepTime] Wartezeit zwischen zwei Messungen in Millisekunden
 \item[paLevel] Funkstärke des NRF24 Moduls, erlaubte Werte sind 'low', 'med und 'high'
 \end{description}
-%
+
+\subsection{Datenübertragung}
+Da die maximale Grösse eines Datenpaketes des NRF24 Moduls nur 32 Zeichen beträgt muss die gesamte Nachricht in mehreren Paketen übertragen werden.
+
+\begin{center}
+\includegraphics[width=17cm, left]{Bilder/Funkprotokoll.png}
+ \captionsetup{justification=centering}
+\captionof{figure}{Übertragen der Messdaten in mehreren Paketen}\label{radioprotocol}
+\end{center}
+\begin{minted}{arduino}
+bool ok = radio->write( &sending, sizeof(sending));    //Sends first packet to radio
+
+if (ok) {
+  byte packetReceived = 0;  //packetReceived (feedback) = 0th packet
+  radio->startListening();    //start listening for a response
+  int retry = 0;
+  while (!confirmed && retry < 5) {
+    delay(50);
+    if (radio->available()) {
+      radio->read(&packetReceived, sizeof(packetReceived));    //save response
+      if (packetReceived == pkt) {  //If packet number received == packet sent
+        confirmed = true;
+        Serial.println("Packet was confirmed, proceed to send next packet.");
+      }
+      else {
+        confirmed = false;
+        sendArray = false;
+        Serial.println("Either nothing sent/no confirmation/Mismatch of packets (resend??)");
+      }
+    }
+    retry++;
+  }
+  radio->stopListening();
+}
+\end{minted}
 \chapter{IoT Gateway}
 \section{Übersicht}
+Die Aufgabe des IoT Gateways ist es die Messdaten welche über Funk gesendet werden zu empfangen und an den MQTT Broker weiterzuleiten. Dazu ist es mit einem Funkmodul und einer Ethernet Schnittstelle ausgerüstet.
 \section{Hardware}
-\section{Funkverbindung}
+Die Basis des MQTT Gateway bildet ein Arduino Mega\footnote{\url{https://store.arduino.cc/arduino-mega-2560-rev3}} welcher mit einem Ethernet Shield \footnote{\url{https://www.bastelgarage.ch/ethernet-shield-spi-w5100-fur-arduino}} kombiniert wird. Die Funkverbindung wird wie bei den Sensoren durch ein NRF24 [\ref{nrf24}] Modul hergestellt.
 \subsection{Aufbau}
 \begin{center}
-  \begin{center}
     \includegraphics[width=12cm, left]{Bilder/MQTT-Gateway-Design_Steckplatine.png}
-  \end{center}
     \captionof{figure}{Verdrahtung der Komponenten}
 \end{center}
 \subsection{Zugriffsschutz}
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
 \section{Software}
+Nachdem die Nachricht eines Sensors validiert wurde wird das Format in JSON umgewandelt und an ein MQTT Topic verschickt.
+\begin{center}
+	\begin{minted}{js}
+	{     
+	    "ID": 0001, 
+	    "Temp.Air": 22.6,
+	    "Hum.Air": 78.1, 
+	    "Hum.Soil": 43.7
+	}
+	\end{minted}
+	\captionof{figure}{Sensor Datensatz in JSON Format} 
+	\label{json-example}
+\end{center}
+
 \subsection{Konfiguration}
 Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
 \begin{center}
@@ -356,19 +406,6 @@ Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel
 	\end{forest}
 	\end{minipage}
 \end{center}
-
-\begin{listing}
-\begin{minted}{js}
-{     
-    "ID": 0001, 
-    "Temp.Air": 22.6,
-    "Hum.Air": 78.1, 
-    "Hum.Soil": 43.7
-}
-\end{minted}
-\caption{Sensor Datensatz in JSON Format} 
-\label{json-example}
-\end{listing}
 
 \chapter{Speicherung und Visualisierung}
 \section{Übersicht}
