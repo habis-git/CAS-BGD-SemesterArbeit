@@ -29,6 +29,11 @@ RF24 radio(7, 8); // CE, CSN
 const int pipes_length = 5;
 const byte pipes[pipes_length][6] = { "Ardu0", "1Node", "2Node", "3Node", "4Node" };
 
+const byte address1[6] = "1Node";
+const byte address2[6] = "2Node";
+const byte address3[6] = "3Node";
+const byte address4[6] = "4Node";
+
 byte received[90];             //data holder for received data
 bool allReceived;
 
@@ -68,12 +73,15 @@ void setup() {
 
   Serial.println(F("Open pipes"));
   for (int i = 1; i < pipes_length; i++) {
-    radio.openReadingPipe(i + 1, pipes[i]);
+    radio.openReadingPipe(i, pipes[i]);
     Serial.print(F("Listening to pipe: "));
     char c_address[8];
     sprintf(c_address, "-> %s", pipes[i]);
-    Serial.println(c_address);
+    Serial.print(c_address);
+    Serial.print(" on channel ");
+    Serial.println(i);
   }
+
 
   Serial.println(F("Start listening on radio"));
   radio.startListening();
@@ -123,7 +131,8 @@ void loop() {
         }
         delay(5);
         radio.stopListening();    //stop listening to transmit response of packet received.
-        byte* address = pipes[pipe_num - 1];
+
+        byte* address = pipes[pipe_num];
 #ifdef DEBUG
         char t[6];
         sprintf(t, "%s", address);

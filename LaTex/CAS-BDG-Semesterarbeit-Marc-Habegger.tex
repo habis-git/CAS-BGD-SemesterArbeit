@@ -95,7 +95,7 @@
 % Author(s)
 \author{Marc Habegger}
 % Title
-\title{IoT Erfassung von und Darstellung Sensordaten}
+\title{IoT Erfassung und Darstellung Sensordaten}
 % Short Title, will be used in the footline
 \shorttitle{CAS BGD Semesterarbeit}
 % Subtitle
@@ -155,6 +155,8 @@
     \url{https://de.wikipedia.org/wiki/Keyed-Hash_Message_Authentication_Code}}
 }
 
+\newacronym[see={[Glossary:]{HMAC}}]{hmac}{HMAC}{Keyed-Hash Message Authentication Code}
+
 \newglossaryentry{MQTT}
 {
     name=Message Queuing Telemetry Transport,
@@ -162,13 +164,27 @@
     \url{https://de.wikipedia.org/wiki/MQTT}}
 }
 
-\newacronym[see={[Glossary:]{HMAC}}]{hmac}{HMAC}{Keyed-Hash Message Authentication Code}
+\newacronym[see={[Glossary:]{MQTT}}]{mqtt}{MQTT}{Message Queuing Telemetry Transport}
+
+\newglossaryentry{ARDUINO}
+{
+ 	name=Arduino,
+    description={Arduino ist eine aus Soft- und Hardware bestehende Physical-Computing-Plattform. Beide Komponenten sind im Sinne von Open Source quelloffen.\break
+    \url{https://de.wikipedia.org/wiki/Arduino_(Plattform)}}
+}
+
+\newglossaryentry{ZIGBEE}
+{
+	name=ZigBee,
+    description={ZigBee ist eine Spezifikation für drahtlose Netzwerke mit geringem Datenaufkommen.\break
+    \url{https://de.wikipedia.org/wiki/ZigBee}}
+}
 
 \begin{document}
 
 \maketitle
 %**************************************************************************
-\frontmatter % preliminary parts
+%\frontmatter % preliminary parts
 
 \tableofcontents
 \sloppy
@@ -179,15 +195,15 @@
 %**************************************************************************
 %\part{Part One}
 \chapter*{Management Summary}
-Das Internet der Dinge (\Gls{iot}) zeichnet sich neben einer allgegenwärtigen Verfügbarkeit von Daten auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
+Das Internet der Dinge (\Gls{iot}) zeichnet sich, neben einer allgegenwärtigen Verfügbarkeit von Daten, auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
 
-  \begin{center}
+  \begin{center}\label{overview}
     \includegraphics[width=18cm, left]{Bilder/Overview.png}
      \captionsetup{justification=centering}
       \captionof{figure}{Systemaufbau Funknetzwerk}
   \end{center}
    
-Das realisierte Netzwerk besteht aus mehreren Sensoren welche Messdaten über Funk an ein MQTT-Gateway senden welches wieder über das Netzwerk mit der Datenbank verbunden ist. Für die Speicherung der Daten wird eine Zeitreihendatenbank verwendet welche speziell für die Behandlung von Messwerten optimiert ist.
+Das realisierte Netzwerk besteht aus mehreren Sensoren, die Messdaten über Funk an ein MQTT-Gateway senden, welches über ein Netzwerk mit einer Datenbank verbunden ist. Für die Speicherung der Daten wird eine Zeitreihendatenbank verwendet, die speziell für die Behandlung von Messwerten optimiert ist.
 
   \begin{center}
     \includegraphics[width=14cm, left]{Bilder/Overview-2.png}
@@ -196,14 +212,15 @@ Das realisierte Netzwerk besteht aus mehreren Sensoren welche Messdaten über Fu
   \end{center}
   Schlussendlich werden die Daten visualisiert und können über einen Browser betrachtet werden. Beim erreichen oder unterschreiten selbst definierter Schwellwerte kann ein Alarm ausgelöst werden.
 \chapter{Einleitung}
-Der gesammte Code und die Dokumentation dieser Arbeit ist auf Github unter folgendem Link zu finden: \url{https://github.com/habis-git/CAS-BGD-SemesterArbeit}
-\section{Übersicht}
-Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern sowie die leichte Beschaffung auch innerhalb der Schweiz bestimmt. Der Verzicht auf kommerzielle Systeme erlaubt eine grosse Flexibilität in der Kombination von Funktionalitäten.
-\section{Hardware}
+Der gesamte Code und die Dokumentation dieser Arbeit ist auf Github unter folgendem Link zu finden: \url{https://github.com/habis-git/CAS-BGD-SemesterArbeit} und wird auch nach Abschluss dieser Arbeit weiterentwickelt. Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern, sowie die leichte Beschaffung auch innerhalb der Schweiz, ausgewählt. Der Arduino Mega als MQTT Gateway und der Raspberry Pi 2 für die Linux Plattform waren bereits von früheren Projekten vorhanden und wurden deshalb in diesem Projekt eingesetzt.
+
+Der Aufbau dieses Dokumentes folgt der Übersichtsgrafik  \ref{overview} mit den Sensoren auf der linken Seite und der Visualisierung auf der Rechten Seite und dementsprechend werden die Sensoren zuerst beschrieben und die Visualisierung findet sich gegen Ende des Dokumentes.
+
+Diese Dokumentation hat nicht den Anspruch den Aufbau des Projektes in jedem Punkt zu erläutern, gewisse Arbeiten wie z. Bsp. Lötarbeiten oder auch Konfigurationen auf Betriebssystem Ebene fehlen. Die Übersicht der Webseiten [\ref{links}] welche die nötigen Informationen dieses Projektes lieferten, kann bei solchen Fragen weiterhelfen.
 
 \chapter{Sensor Plattform}
 \section{Mikrokontroller}
-Ein sehr beliebter Mikrokontroller ist der ESP32 von Espressif \cite{espressif} welcher durch grossen Funktionsumfang und einen recht geringen Preis überzeugen kann. Ein Vorteil ist ebenfalls die Möglichkeit der Programmierung durch die Arduino\cite{arduino} IDE welche frei verfügbar ist und die Entwicklung stark vereinfacht. Es existieren viele verschiedene Mikrocontroller welche den ESP32 Baustein verwenden, für dieses Projekt kam der Firebeetle \cite{firebeetle} von DF Robot zum Einsatz.  \footnote{https://www.bastelgarage.ch/firebeetle-esp32-iot-mikrocontroller-mit-wifi}
+Ein sehr beliebter Mikrokontroller ist der ESP32 von Espressif \cite{espressif}, welcher durch grossen Funktionsumfang und geringem Preis überzeugen kann. Ein Vorteil ist ebenfalls die Möglichkeit der Programmierung durch die Arduino\cite{arduino} IDE, welche frei verfügbar ist und die Entwicklung stark vereinfacht. Es existieren viele verschiedene Mikrocontroller, welche den ESP32 Baustein verwenden. Für dieses Projekt kam der Firebeetle \cite{firebeetle} von DF Robot zum Einsatz.
 \begin{center}
 \begin{minipage}[t]{0.5\linewidth}
 	\centering
@@ -212,30 +229,68 @@ Ein sehr beliebter Mikrokontroller ist der ESP32 von Espressif \cite{espressif} 
 \end{minipage}%
 \begin{minipage}[t]{0.5\linewidth}
 Der ESP32 besitzt sowohl WLAN als auch Bluetooth LE Schnittstellen. Diese wurden jedoch aus Gründen des Stromverbrauchs (WLAN) oder der Reichweite (Bluetooth LE) in diesem Projekt nicht verwendet.\break \break
- Der Firebeetle\cite{firebeetle} Baustein hat sowohl die Möglichkeit einer Stromversorgung mit 5 Volt als auch mit 3.7 Volt, womit er direkt durch Lithium-Ionen Akkus betrieben werden kann.
+ Der Firebeetle\cite{firebeetle} Baustein hat sowohl die Möglichkeit einer Stromversorgung mit 5 Volt, als auch mit 3.7 Volt, womit er direkt durch Lithium-Ionen Akkus betrieben werden kann.
 \end{minipage}
 \end{center}
+\section{Funkverbindung}
+Die Wahl der Funktechnologie wurde nach folgenden Punkten getroffen:
+\begin{itemize}
+	\item Stromverbrauch (je kleiner desto besser)
+	\item Reichweite (20-30 m für die Anwendung im Garten)
+	\item Preis
+	\item Verfügbarkeit von Bibliotheken für die Programmierung
+\end{itemize}
+
+\begin{table}[t]
+\renewcommand{\arraystretch}{2} % In order to set the correct linespacing.
+% Must be set here, since this also changes the linespacing for the array
+% environment
+\arrayrulecolor{white}
+	\begin{center}
+		\rowcolors{1}{\seccolor!10}{\seccolor!10} % Rows with 10% of secondary color
+% See page 33 of the "BFH Markenmanual"
+	\begin{threeparttable}
+	\begin{tabular}{lllll}
+	%	\toprule
+		\rowcolor{\seccolor!50}
+		& NRF24 & ZigBee & Bluetooth LE & WLAN\\\bfhmidline
+		Frequenz &  2.4 GHz & 868/915 MHz \& 2.4 GHz & 2.4 GHz & 2.4–5 GHz   \\\bfhmidline
+		Stromverbrauch & 18 mA & 30–40 mA & 30-15 mA & 116-22 mA \\\bfhmidline  
+		Benötigte Leistung & 60 mW & 36.9 mW & 215 mW-10 mW & 835 mW-200 mW \\\bfhmidline
+		Reichweite  & 10–50 m & 10–300 m & 10–30 m & 100–500 m
+		%\bottomrule
+	\end{tabular}
+	\caption{Leistung der verschiedenen Funktechniken im Vergleich}\label{tab:radioTable}
+	 \source{Design of Wireless Sensors for IoT with Energy Storage and Communication Channel Heterogeneity \cite{radioPower}}
+	\end{threeparttable}
+	\end{center}
+\end{table}
+Aus der Tabelle \ref{tab:radioTable} geht hervor, dass die ZigBee Technologie ein attraktives Paket aus geringem Stromverbrauch und guter Reichweite bietet. Allerdings sind die Module für ZigBee relativ kostspielig (20-30 Fr.), womit sich jeder einzelne Sensor stark verteuert. Bluetooth LE ist zwar ebenfalls sehr stromsparend, dies allerdings nur in der kürzesten Reichweite (>10m), welche für dieses Projekt unzureichend ist.
+
+Schussendlich war es die Kombination aus guter Reichweite, sehr geringem Stromverbrauch und extrem günstigem Preis (< 2 Fr.) bei den NRF24 Modulen, die überzeugte.
+
 \section{Sensoren}
- Es existiert eine grosse Anzahl an verschiedenen Sensoren welche auch für Privatanwendern nutzbar sind. In diesem Projekt wurden Sensoren gewählt für welche frei verfügbare Bibliotheken in einer Version für den ESP32 vorhanden sind. Grundsätzlich wird bei den Sensoren unterschieden zwischen solchen die 
+ Es existiert eine grosse Anzahl an verschiedenen Sensoren, welche auch für Privatanwender nutzbar sind. In diesem Projekt wurden Sensoren gewählt für welche frei verfügbare Bibliotheken in einer Version für den ESP32 vorhanden sind. Grundsätzlich wird bei den Sensoren unterschieden zwischen solchen die 
  \begin{itemize}
-	 \item Digitale Werte liefern die direkt einer Einheit (Grad Celsius) oder Prozentangabe (Luftfeuchtigkeit) entsprechen
-	  \item Analoge Messwerte welche auf eine Einheit umgerechnet werden müssen
+	 \item Digitale Werte liefern, die direkt einer Einheit (Grad Celsius) oder Prozentangabe (Luftfeuchtigkeit) entsprechen
+	  \item Analoge Messwerte, welche auf eine Einheit umgerechnet werden müssen
 \end{itemize}
 Für dieses Projekt wurden mehrere Sensoren ausgewählt und kombiniert:
 \begin{itemize}
 	\item Lufttemperatur- und Luftfeuchtigkeitssensoren DHT11 [\ref{DHT11}] und DHT22 [\ref{DHT22}]
-	\item Kapazitiver Bodenfeuchtesensor V1.2 [\ref{moistV1.2}]
+	\item Bodenfeuchtesensor V1.2 [\ref{moistV1.2}]
 \end{itemize}
 \section{Aufbau}
-Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei Digitale Pins für CE und CSN welche frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte dann kann dies bei Initialisierung des Funkmoduls angegeben werden: \mint{arduino}|radio = new RF24(25, 26); //CE, CSN|
-Der Daten-Input des Temperatur Sensors benötigt einen Digitalen Eingang welchen ich auf den Pin 27 gesetzt habe. Der Bodenfeuchtigkeitssensor hat einen analogen Ausgang welchen ich mit Pin 4 verbunden hab. Falls andere Pins verwendet werden so können die Variablen am Anfang des Programms angepasst werden:
+Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei digitale Pins für CE und CSN, die frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte, dann kann dies bei der Initialisierung des Funkmoduls angegeben werden: \mint{arduino}|radio = new RF24(25, 26); //CE, CSN|
+
+Der Daten-Input des Temperatur Sensors benötigt einen digitalen Eingang, welchen ich auf den Pin 27 gesetzt habe. Der Bodenfeuchtigkeitssensor hat einen analogen Ausgang, welchen ich mit Pin 4 verbunden habe. Für andere Pins können die folgenden Variablen angepasst werden:
 \begin{minted}{arduino}
 // DHT Sensor
 uint8_t DHTPin = 27;
 // Moisture Sensor
 uint8_t MOISTSENSOR_PIN = 4;
 \end{minted}
-Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku mit Strom versorgt werden. Wenn ein Akku direkt angeschlossen werden soll hat es auf der Rückseite  unterhalb des USB Anschlusses zwei Lötaugen. Ein so angeschlossener Akku kann danach über die USB Buchse geladen werden, der ESP32 enthält zu diesem Zweck eine Lade-Elektronik.
+Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku mit Strom versorgt werden. Wenn ein Akku direkt angeschlossen werden soll, hat es auf der Rückseite  unterhalb des USB Anschlusses zwei Lötaugen. Ein so angeschlossener Akku kann danach über die USB Buchse geladen werden, der ESP32 enthält zu diesem Zweck eine Lade-Elektronik.
 
   \begin{center}
     \includegraphics[width=17cm, left]{Bilder/Sensor-Design_Steckplatine.png}
@@ -245,7 +300,7 @@ Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku m
 
 
  \section{Funkverbindung mit dem MQTT Gateway}
- Da die Sensoren nicht WLAN als Funktechnik verwenden können sie nicht direkt auf den MQTT Server verbinden und Nachrichten senden. Diese Aufgabe übernimmt das MQTT-Gateway welches auf der einen Seite ebenfalls mit einem NRF24 [\ref{nrf24}] Funkmodul ausgerüstet ist und andererseits eine Ethernet Netzwerkanbindung hat.
+ Da die Sensoren nicht WLAN als Funktechnik verwenden, können sie nicht direkt auf den MQTT Server verbinden und diesem Nachrichten senden. Diese Aufgabe übernimmt das MQTT-Gateway, welches auf der einen Seite ebenfalls mit einem NRF24 [\ref{nrf24}] Funkmodul ausgerüstet ist und andererseits eine Ethernet Netzwerkanbindung hat.
  
  Jedes Funkmodul kann mit 5 anderen Modulen kommunizieren, dabei muss jedes Modul eine eigene Adresse verwenden unter der es senden und empfangen kann.
 \begin{center}
@@ -262,7 +317,7 @@ Die Schaltung kann über den Mikro-USB Anschluss oder einen Lithium-Ionen-Akku m
         \captionof{figure}{NRF24L01+ Funkmodul}
     \end{minipage}
 \end{center}
-Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikation der Sensoren über eine einzigartige Id unabhängig vom Programmcode vorgenommen werden kann [\ref{config}].
+Bei der Programmierung der Sensoren wurde darauf geachtet, dass die Identifikation der Sensoren über eine einzigartige Id unabhängig vom Programmcode vorgenommen werden kann [\ref{config}].
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
         \centering
@@ -278,9 +333,9 @@ Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikatio
     \end{minipage}
 \end{center}
 \subsection{Absicherung der Funkverbindung}\label{funkAbsicherung}
-Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{hmac} eingesetzt.
+Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist, können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern, wird eine Technik Namens \Gls{hmac} eingesetzt.
 Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Hash-Wert erweitert
-\mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2| und die Nachricht mit \Gls{hmac} und den Messwerten wird an das \Gls{iot} Gateway geschickt.
+\mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2| und die Nachricht mit \Gls{hmac} und den Messwerten wird an das \Gls{mqtt} Gateway geschickt.
  \section{Software}
  \subsection{Verwendete Bibliotheken}
 
@@ -291,12 +346,12 @@ Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Has
 \item[DHT-sensor-library] Luft- und Feuchtigkeitssensor \cite{dht}
  \end{description}
 Einige der aufgeführten Bibliotheken können direkt über die Bibliotheksverwaltung der Arduino IDE installiert werden. Ansonsten können die Bibliotheken über den Link (führt meistens auf github.com) heruntergeladen und von Hand installiert werden. 
-{\color{red}Achtung: Es gibt viele Bibliotheken mit ähnlichem Namen und Beschreibung. Falls das kompilieren fehlschlägt bitte prüfen ob die richtige Bibliothek eingebunden wurde.}
+{\color{red}Achtung: Es gibt viele Bibliotheken mit ähnlichem Namen und Beschreibung. Falls das kompilieren fehlschlägt bitte prüfen, ob die richtige Bibliothek eingebunden wurde.}
 
  \subsection{Konfiguration eines Sensors}\label{config}
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
-       Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen werden so müssen die Konfigurationsparameter nur einmal festgelegt werden und ändern sich, wenn überhaupt, nur selten.
+       Der Flash-Speicher des ESP32 kann in mehrere Bereiche unterteilt werden. So können Dateien unabhängig von dem kompilierten Programm auf den Mikrocontroller geladen werden. Während der Programm-Code während der Entwicklung ständig ändert und immer wieder via Sketch-Upload auf den ESP32 übertragen wird, werden die Konfigurationsparameter nur einmal festgelegt.
  \break
  \break
       \begin{forest}
@@ -334,8 +389,8 @@ Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
 \item[paLevel] Funkstärke des NRF24 Moduls, erlaubte Werte sind 'low', 'med und 'high'
 \end{description}
 
-\subsection{Datenübertragung}Durch die Verwendung des \Gls{hmac} wird die Nachricht stark vergrössert und erreicht um die Neunzig zeichen.
-Da die maximale Grösse eines Datenpaketes des NRF24 Moduls nur 32 Zeichen beträgt muss die gesamte Nachricht in mehreren Paketen übertragen werden.
+\subsection{Datenübertragung}Durch die Verwendung des \Gls{hmac} wird die Nachricht stark vergrössert und erreicht um die neunzig Zeichen.
+Da die maximale Grösse eines Datenpaketes des NRF24 Moduls nur 32 Zeichen beträgt, muss die gesamte Nachricht in mehreren Paketen übertragen werden.
 
 \begin{center}
 \includegraphics[width=17cm, left]{Bilder/Funkprotokoll.png}
@@ -368,9 +423,9 @@ if (ok) {
   radio->stopListening();
 }
 \end{minted}
-\chapter{IoT Gateway}
+\chapter{MQTT Gateway}
 \section{Übersicht}
-Die Aufgabe des IoT Gateways ist es die Messdaten welche über Funk gesendet werden zu empfangen und an den MQTT Broker weiterzuleiten. Dazu ist es mit einem Funkmodul und einer Ethernet Schnittstelle ausgerüstet.
+Die Aufgabe des \cite{mqtt} Gateways ist es die Messdaten, welche über Funk gesendet werden, zu empfangen und an den \cite{mqtt} Broker weiterzuleiten. Dazu ist es mit einem Funkmodul und einer Ethernet Schnittstelle ausgerüstet.
 \section{Hardware}
 Die Basis des MQTT Gateway bildet ein Arduino Mega\footnote{\url{https://store.arduino.cc/arduino-mega-2560-rev3}} welcher mit einem Ethernet Shield \footnote{\url{https://www.bastelgarage.ch/ethernet-shield-spi-w5100-fur-arduino}} kombiniert wird. Die Funkverbindung wird wie bei den Sensoren durch ein NRF24 [\ref{nrf24}] Modul hergestellt.
 \subsection{Aufbau}
@@ -383,7 +438,7 @@ Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl
 
 Der Empfänger der Nachricht, welcher denselben geheimen Schlüssel wie der Sender verwendet, berechnet aus den übertragenen Daten ebenfalls den \Gls{hmac} und vergleicht den selbst berechneten Wert mit dem empfangenen Wert. Wenn diese beiden Werte nicht übereinstimmen so wird der Datensatz verworfen.
 \section{Software}
-Nachdem die Nachricht eines Sensors validiert wurde wird das Format in JSON umgewandelt und an ein MQTT Topic verschickt.
+Nachdem die Nachricht eines Sensors validiert wurde, wird das Format in JSON umgewandelt und an ein MQTT Topic verschickt.
 \begin{center}
 	\begin{minted}{js}
 	{     
@@ -417,8 +472,8 @@ Das Gateway benötigt für die Berechnung des \Gls{hmac} den gleichen Schlüssel
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
     	Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
-    \end{minipage}\hfill
-    \begin{minipage}[b]{0.45\textwidth}
+    \end{minipage}
+    \begin{minipage}[b]{0.4\textwidth}
 	\begin{forest}
 		    for tree={font=\sffamily, grow'=0,
 		    folder indent=.9em, folder icons,
@@ -446,49 +501,76 @@ Für die Speicherung und Verarbeitung der gesammelten Sensordaten sind mehrere S
 \section{MQTT Broker}
 Als MQTT Broker wird die Open Source Software Mosquitto \cite{mosquitto} verwendet.
 \subsection{Installation}
-Die Installation von Mosquitto sollte ebenfalls den Mosquitto-Client umfassen damit man nach der Installation diese direkt testen kann.
+Die Installation von Mosquitto sollte ebenfalls den Mosquitto-Client umfassen, damit man nach der Installation diese direkt testen kann.
 \begin{minted}{shell}
 sudo apt-get install -y mosquitto mosquitto-clients
    \end{minted}
- Um den Broker automatisch bei jedem Neustart zu starten muss der Service noch aktiviert werden.
+ Um den Broker automatisch bei jedem Neustart zu starten, muss der Service noch aktiviert werden.
  \begin{minted}{shell}
 systemctl enable mosquitto.service
  \end{minted}
 
 \section{Datenspeicherung}
+Die Messdaten werden in der Zeitreihendatenbank Influx \cite{influx} gespeichert. Eine Zeitreihendatenbank erlaubt das schnelle schreiben von Messwerten und kann automatisch ältere Datensätze entfernen um den Platzbedarf nicht zu gross werden zu lassen.
   \begin{center}
-    \includegraphics[width=\textwidth]{Bilder/InfluxDB-2.png}
+    \includegraphics[width=\textwidth, valign=t]{Bilder/InfluxDB-2.png}
     \captionsetup{justification=centering}
     \captionof{figure}{Übersicht Influx Software}
     \source{\url{www.influxdata.com}}
    \end{center}
    \subsection{Telegraf}
-Um die Daten aus dem Mosquitto Topic zu lesen und in die Datenbank zu schreiben wird die Software Telegraf \cite{telegraf} eingesetzt.
-\subsubsection{Installation}
-\begin{minted}{shell}
+Um die Daten aus dem MQTT Topic zu lesen und in die Datenbank zu schreiben, wird die Software Telegraf \cite{telegraf} eingesetzt.
+\subsubsection{Installation / Konfiguration}
+Telegraf wird zusammen mit InfluxDB installiert und muss nur noch konfiguriert werden. Eine Konfigurationsdatei kann initial mit dem Kommando \mint[breaklines=true]{shell}|telegraf -sample-config -input-filter mqtt_consumer -output-filter influxdb > telegraf.conf| erzeugt werden.
 
+In der erzeugten Datei muss das Einlesen der MQTT Queue im Abschnitt ''[[inputs.mqtt{\_}consumer]]'' angepasst werden.
+\begin{minted}{shell}
+[[inputs.mqtt_consumer]]
+   servers = ["tcp://localhost:1883"]
+   topics = [
+     "/weather/",
+   ]
+    topic_tag = "weather"
+    qos = 0
+    connection_timeout = "30s"
+    max_undelivered_messages = 1000
+    client_id = "telegraf"
+    data_format = "json"
+    tag_keys = ["ID"]
 \end{minted}
+Auch das schreiben der Daten in die Influx Datenbank muss im Abschnitt ''[[outputs.influxdb]]'' konfiguriert werden.
+\begin{minted}{shell}
+[[outputs.influxdb]]
+  urls = ["http://localhost:8086"]
+  database = "weather_db"
+  timeout = "5s"
+  username = "telegraf"
+  password = "***************"
+  user_agent = "telegraf"
+\end{minted}
+
+Zuletzt wird Telegraf mitgeteilt welche Konfigurationsdatei verwendet werden soll: \mint{shell}|telegraf --config telegraf.conf|
 \subsection{InfluxDB}
    \subsubsection{Installation}
-   Die Installationsquelle ist unterschiedlich für die verschiedenen Linux Distributionen. Wenn wie in meinem Fall die Raspian Distribution in der Version 'buster' verwendet wird kann das benötigte Repository mit folgenden Kommandos hinzugefügt werden:
+   Die Installationsquelle ist unterschiedlich für die verschiedenen Linux Distributionen. Wenn, wie in meinem Fall, die Raspian Distribution in der Version 'buster' verwendet wird, kann das benötigte Repository mit folgenden Kommandos hinzugefügt werden:
  \begin{minted}[breaklines]{shell}
 curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
 sudo apt install apt-transport-https
 echo "deb https://repos.influxdata.com/debian buster stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
 \end{minted}
-Die Installation ist danach schnell gemacht:
+Die Installation ist schnell gemacht:
  \begin{minted}{shell}
 sudo apt-get update && sudo apt-get install influxdb
 sudo systemctl unmask influxdb.service
    \end{minted}
-   Danach muss der Service noch gestartet werden:
+   Anschliessend muss der Service noch gestartet werden:
     \begin{minted}{shell}
 sudo systemctl start influxdb
    \end{minted}
    \subsubsection{Datenbank einrichten}
 {\color{red}Achtung: Standardmässig ist die Influx Datenbank ohne Authentifizierung eingerichtet. In einem offenen Umfeld sollte die standardmässige Authentifizierung eingeschaltet werden \cite{influxAuth}}
 
-Um eine Datenbank und einen Benutzer einzurichten verwendet man das Kommondozeilen Tool \mint{shell}|influx|
+Um eine Datenbank und einen Benutzer einzurichten verwendet man das Kommondozeilen-Tool \mint{shell}|influx|
  \begin{minted}{shell}
 Connected to http://localhost:8086 version 1.7.7
 InfluxDB shell version: 1.7.7
@@ -501,7 +583,7 @@ InfluxDB shell version: 1.7.7
 \section{Visualisierung}
 Die Visualisierung der Daten wird über die Open Source Software Grafana \cite{grafana} durchgeführt.
 \subsection{Installation}
-Grafana für den Raspberry Pi kann nicht über ein Repository installiert werden weshalb die aktuelle Version zuerst mit \mint{shell}|wget| heruntergeladen und danach entpackt wird.
+Grafana für den Raspberry Pi kann nicht über ein Repository installiert werden, weshalb die aktuelle Version zuerst mit \mint{shell}|wget| heruntergeladen und danach entpackt wird.
  \begin{minted}[breaklines]{shell}
 wget https://github.com/fg2it/grafana-on-raspberry/releases/download/v5.1.4/grafana_5.1.4_armhf.deb
 sudo apt-get install -y adduser libfontconfig1
@@ -511,7 +593,7 @@ sudo systemctl start grafana-server
 sudo systemctl enable grafana-server.service
    \end{minted}
    \subsection{Grafana Dashboard}
-Die Darstellung der Messwerte erfolgt in Grafana über Panels welche in einem Dashboard \cite{grafanaDashboard} zusammengefasst werden.
+Die Darstellung der Messwerte erfolgt in Grafana über Panels, welche in einem Dashboard \cite{grafanaDashboard} zusammengefasst werden.
 \begin{center}
    \includegraphics[width=17cm]{Bilder/Grafana-Dashboard.PNG}
    \captionsetup{justification=centering}
@@ -521,89 +603,94 @@ Die Darstellung der Messwerte erfolgt in Grafana über Panels welche in einem Da
 \begin{center}
     \begin{minipage}[t]{0.45\textwidth}
         \centering
-        \includegraphics[width=7cm]{Bilder/Grafana-Datasource.PNG} % first figure itself
+        \includegraphics[width=7cm, valign=t]{Bilder/Grafana-Datasource.PNG} % first figure itself
         \captionsetup{justification=centering}
         \captionof{figure}{Grafana: Konfiguration Influx Datenquelle}
     \end{minipage}
     \begin{minipage}[t]{0.45\textwidth}
-Bevor ein Dashboard erstellt wird muss man die Datenquellen definieren. Hier ist die Konfiguration der Datenquelle welche aus der lokal installierten InfluxDB und der Datenbank weather{\_}db die Messwerte liest.
+Bevor ein Dashboard erstellt wird, muss man die Datenquellen definieren. Hier ist die Konfiguration der Datenquelle, welche aus der lokal installierten InfluxDB und der Datenbank weather{\_}db die Messwerte liest.
     \end{minipage}
 \end{center}
 
 \begin{center}
     \begin{minipage}[t]{0.45\textwidth}
         \centering
-        \includegraphics[width=7cm]{Bilder/Grafana-Luft.PNG} % first figure itself
+        \includegraphics[width=7cm, valign=t]{Bilder/Grafana-Luft.PNG} % first figure itself
         \captionsetup{justification=centering}
         \captionof{figure}{Grafana Dashboard: Panel Lufttemperatur}
         
-        \includegraphics[width=7cm]{Bilder/Grafana-Panel-Konfiguration.PNG}
-    \end{minipage}
-    \begin{minipage}[t]{0.45\textwidth}
-Die Datenbankabfrage für jedes Panel kann direkt in der Benutzeroberfläche von Grafana erstellt werden. Dabei können die Mittelwerte über mehrere Messwerte gebildet werden oder auch nur der maximale Wert in einem bestimmten Zeitintervall bestimmt werden. In dem Weather Dashboard werden von allen drei Mess-Kategorien die höchsten Werte der letzten Tage dargestellt neben den Panels mit dem zeitlichen Verlauf.
-    \end{minipage}
-\end{center}
-
-\begin{center}
-    \begin{minipage}[t]{0.45\textwidth}
-        \centering
-        \includegraphics[width=7cm]{Bilder/Grafana-Feuchtigkeit.png} % second figure itself
+        \includegraphics[width=7cm, valign=t]{Bilder/Grafana-Panel-Konfiguration.PNG}
+        
+         \includegraphics[width=7cm, valign=t]{Bilder/Grafana-Feuchtigkeit.png} % second figure itself
         \captionsetup{justification=centering}
         \captionof{figure}{Grafana Dashboard: Panel Feuchtigkeit}
     \end{minipage}
     \begin{minipage}[t]{0.45\textwidth}
-       Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe gebildet, was sehr unverständlich sein kann. In der Konfiguration eines Panels kann deshalb im Feld "ALIAS BY" eine alternative Bezeichnung angegeben werden. In diesem Beispiel ist es \mint{shell}|Sensor $tag_ID| was dazu führt dass jeweils der Text "Sensor " und die ID des Sensors verwendet wird.
+Die Datenbankabfrage für jedes Panel kann direkt in der Benutzeroberfläche von Grafana erstellt werden. Dabei können die Mittelwerte über mehrere Messwerte gebildet werden oder auch nur der maximale Wert in einem bestimmten Zeitintervall bestimmt werden. In dem Weather Dashboard werden von allen drei Mess-Kategorien die höchsten Werte der letzten Tage dargestellt neben den Panels mit dem zeitlichen Verlauf.
+\break
+\break
+Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe gebildet, was sehr unverständlich sein kann. In der Konfiguration eines Panels kann deshalb im Feld ''ALIAS BY'' eine alternative Bezeichnung angegeben werden. In diesem Beispiel ist es \mint{js}|Sensor $tag_ID| was dazu führt, dass jeweils der Text ''Sensor'' und die Id des Sensors verwendet wird.
     \end{minipage}
 \end{center}
 \chapter{Verwendete Bauteile}
 \section{ESP32 Mikrokontroller}
-\begin{center}
-    \includegraphics[width=14cm, left]{Bilder/FireBeetleBoard.png}
-    \captionsetup{justification=raggedright}
+\begin{minipage}[t]{0.5\linewidth}
+	\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/Firebeetle.jpg}
+    \includegraphics[width=17cm, left]{Bilder/FireBeetleBoard.png}
+    \captionsetup{justification=centering}
     \captionof{figure}{Anschlüsse des Firebeetle}
-\end{center}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Als Basis für alle Sensoren ist der Firebeetle\footnotemark \cite{firebeetle} sehr gut geeignet. Leider sind noch nicht alle Bibliotheken, welche für den Vorgänger ESP8266 existieren, für den ESP32 adaptiert worden. Vor einem Projekt sollte man also prüfen ob die benötigten Bibliotheken in der richtigen Version vorhanden sind.
+\end{minipage}
+\footnotetext{https://www.bastelgarage.ch/firebeetle-esp32-iot-mikrocontroller-mit-wifi}
+
  \section{Sensoren}
  \subsection{Temperatur und Luftfeuchtigkeit}
  \subsubsection{DHT22}\label{DHT22}
-\begin{flushleft}
-	\begin{minipage}[t]{0.5\linewidth}
+\begin{minipage}[t]{0.5\linewidth}
 		\centering
-    		\includegraphics[width=\compImgSize, left]{Bilder/DHT22.jpg}
+    		\includegraphics[width=\compImgSize, left, valign=t]{Bilder/DHT22.jpg}
     		\captionof{figure}{Temperatur und Luftfeuchtigkeitsmesser DHT22}
-	\end{minipage}%
-	\begin{minipage}[t]{0.5\linewidth}
-	DHT22 im Onlineshop \footnotemark
 	\end{minipage}
-	\footnotetext{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
-\end{flushleft}
+	\begin{minipage}[t]{0.5\linewidth}
+	Der DHT22 \footnotemark ist eine Kombination aus Lufttemperatur und Luftfeuchtigkeitssensor. Gegenüber dem DHT11 ist er präziser, kostet aber auch mehr.
+\end{minipage}
+\footnotetext{https://www.bastelgarage.ch/dht22-temperatur-und-luftfeuchtigkeitssensor-steckbar}
 
 \subsubsection{DHT11}\label{DHT11}
-\begin{flushleft}
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[ width=\compImgSize, left]{Bilder/DHT11.jpg} 
+		\includegraphics[ width=\compImgSize, left, valign=t]{Bilder/DHT11.jpg} 
 		 \captionof{figure}{DHT11 Luft- und Feuchtigkeitssensor}
-	\end{minipage}%
+	\end{minipage}
 	\begin{minipage}[t]{0.5\linewidth}
 	Als Alternative zu dem oben genannten DHT22 gibt es eine billigere Variante mit dem Namen DHT11 \footnotemark.
-	Der DHT11 Sensor hat eine geringere Auflösung als der DHT22, ist ansonsten aber gleich verwendbar.
+	Der DHT11 Sensor hat eine geringere Auflösung als der DHT22, ist ansonsten aber gleich anwendbar.
 	\end{minipage}
 	 \footnotetext{https://www.bastelgarage.ch/dht11-temperatur-und-luftfeuchtigkeitssensor}
-\end{flushleft}
 
 \subsection{Bodenfeuchtigkeit}\label{moistV1.2}
-\begin{center}
-\includegraphics[width=\compImgSize, left]{Bilder/Soil-2.jpg}%
-\captionof{figure}{Kapazitiver Bodenfeuchtesensor V1.2}\label{labelname}%
-\end{center}
-Bodensensor im Onlineshop \footnote{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
+\begin{minipage}[t]{0.5\linewidth}
+\includegraphics[width=\compImgSize, left, valign=t]{Bilder/Soil-2.jpg}%
+\captionof{figure}{Bodenfeuchtesensor V1.2}\label{labelname}
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+Der Bodenfeuchtesensor V1.2 \footnotemark nimmt die Messung kapazitiv vor, d.h. es werden keine leitenden Kontakte in das Erdreich benötigt. Dadurch ist dieser Sensor keinem Verschleiss unterworfen. Die Messung erfolgt analog und muss danach in die gewünschte Masseinheit umgerechnet werden.
+\end{minipage}
+ \footnotetext{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
+ 
 \subsection{Funk}
-\begin{flushleft}
-        \includegraphics[width=\compImgSize]{Bilder/NRF24.jpg} % second figure itself
+\begin{minipage}[t]{0.5\linewidth}
+        \includegraphics[width=\compImgSize, valign=t]{Bilder/NRF24.jpg} % second figure itself
         \captionsetup{justification=raggedright}
         \captionof{figure}{NRF24L01+ Funkmodul}
-\end{flushleft}
-NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
+\end{minipage}
+\begin{minipage}[t]{0.5\linewidth}
+Das Funkmodul NRF24L01+ \footnotemark funkt im 2,4GHz Band und benötigt wenig Strom bei einer guten Reichweite. Der Preis ist sehr niedrig für diesen Baustein, allerdings ist die Anwendung aufwendiger als bei anderen Funkprotokollen.
+\end{minipage}
+\footnotetext{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf24l01-wireless-funk-modul-2-4ghz}
+
 % List of Figures
 \listoffigures
 % List of Tables
@@ -613,7 +700,7 @@ NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf2
 % Bibliography
 
 \renewcommand\bibname{Linkverzeichnis}
-\begin{thebibliography}{99}
+\begin{thebibliography}{99}\label{links}
    \bibitem{whyHmac}What is HMAC Authentication and why is it useful?\break \url{https://www.wolfe.id.au/2012/10/20/what-is-hmac-authentication-and-why-is-it-useful/}
     \bibitem{esp32-hmac}ESP32 Arduino: Applying the HMAC SHA-256 mechanism\break \url{https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/}
     \bibitem{mbedTLS} mbed TLS, Library für den ESP32 welche viele Kryptografische Funktionen implementiert\break \url{https://tls.mbed.org/}
@@ -633,6 +720,8 @@ NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf2
     \bibitem{influxAuth}Authentication and authorization in InfluxDB\break \url{https://docs.influxdata.com/influxdb/v1.7/administration/authentication_and_authorization/}
     \bibitem{grafana} Datenvisualierungs-Software Grafana\break \url{https://grafana.com/}
     \bibitem{grafanaDashboard}Grafana Graph Panel \break \url{https://grafana.com/docs/features/panels/graph/}
+    \bibitem{radioPower}{Design of Wireless Sensors for IoT with Energy
+Storage and Communication Channel Heterogeneity\break \url{https://www.mdpi.com/1424-8220/19/15/3364/pdf}}
   \end{thebibliography}
 %Index
 \addcontentsline{toc}{chapter}{Index}
