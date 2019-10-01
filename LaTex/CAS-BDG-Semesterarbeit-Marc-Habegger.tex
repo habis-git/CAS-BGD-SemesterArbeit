@@ -41,6 +41,11 @@
     breaklines=true,
     encoding=utf8,
     fontsize=\footnotesize,
+    xleftmargin=7mm
+}
+\setminted[shell]{
+	frame=lines,
+	framesep=5mm
 }
 \usemintedstyle{manni}
 
@@ -141,6 +146,8 @@
     \url{https://de.wikipedia.org/wiki/Internet_der_Dinge}}
 }
 
+\newacronym[see={[Glossary:]{IoT}}]{iot}{IoT}{Internet of Things}
+
 \newglossaryentry{HMAC}
 {
     name=Keyed-Hash Message Authentication Code,
@@ -172,7 +179,7 @@
 %**************************************************************************
 %\part{Part One}
 \chapter*{Management Summary}
-Das Internet der Dinge (\Gls{IoT}) zeichnet sich neben einer allgegenwärtigen Verfügbarkeit von Daten auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
+Das Internet der Dinge (\Gls{iot}) zeichnet sich neben einer allgegenwärtigen Verfügbarkeit von Daten auch durch eine grosse Anzahl der Datenquellen aus. Mit dieser Arbeit soll das Zusammenspiel der verschiedenen Komponenten eines Sensornetzwerkes mit einem Speichersystem und einer grafischen Analyse aufgezeigt werden.
 
   \begin{center}
     \includegraphics[width=18cm, left]{Bilder/Overview.png}
@@ -189,6 +196,7 @@ Das realisierte Netzwerk besteht aus mehreren Sensoren welche Messdaten über Fu
   \end{center}
   Schlussendlich werden die Daten visualisiert und können über einen Browser betrachtet werden. Beim erreichen oder unterschreiten selbst definierter Schwellwerte kann ein Alarm ausgelöst werden.
 \chapter{Einleitung}
+Der gesammte Code und die Dokumentation dieser Arbeit ist auf Github unter folgendem Link zu finden: \url{https://github.com/habis-git/CAS-BGD-SemesterArbeit}
 \section{Übersicht}
 Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern sowie die leichte Beschaffung auch innerhalb der Schweiz bestimmt. Der Verzicht auf kommerzielle Systeme erlaubt eine grosse Flexibilität in der Kombination von Funktionalitäten.
 \section{Hardware}
@@ -219,7 +227,7 @@ Für dieses Projekt wurden mehrere Sensoren ausgewählt und kombiniert:
 	\item Kapazitiver Bodenfeuchtesensor V1.2 [\ref{moistV1.2}]
 \end{itemize}
 \section{Aufbau}
-Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei Digitale Pins für CE und CSN welche frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte dann kann dies bei Initialisierung des Funkmoduls angegeben werden: \mint{c}|radio = new RF24(25, 26); //CE, CSN|
+Die Komponenten werden alle mit den 3.7 Volt und Masse Anschlüssen verbunden. Das Funkmodul benötigt die SPI Kontakte SCK, MOSI und MISO und zusätzlich zwei Digitale Pins für CE und CSN welche frei gewählt werden können. In meinem Code habe ich CE auf den Pin 25 gesetzt und CSN auf Pin 26. Wenn man andere Pins verwenden möchte dann kann dies bei Initialisierung des Funkmoduls angegeben werden: \mint{arduino}|radio = new RF24(25, 26); //CE, CSN|
 Der Daten-Input des Temperatur Sensors benötigt einen Digitalen Eingang welchen ich auf den Pin 27 gesetzt habe. Der Bodenfeuchtigkeitssensor hat einen analogen Ausgang welchen ich mit Pin 4 verbunden hab. Falls andere Pins verwendet werden so können die Variablen am Anfang des Programms angepasst werden:
 \begin{minted}{arduino}
 // DHT Sensor
@@ -269,11 +277,10 @@ Bei der Programmierung der Sensoren wurde darauf geachtet dass die Identifikatio
         \captionof{figure}{Addressierung Funkmodule}
     \end{minipage}
 \end{center}
-\subsection{Absicherung der Funkverbindung}
+\subsection{Absicherung der Funkverbindung}\label{funkAbsicherung}
 Die Identifikation eines Sensors ist aber nicht zu Verwechseln mit einer Prüfung ob der Sender überhaupt berechtigt ist Daten zu senden. Da das Funkprotokoll unverschlüsselt ist können andere Sender ebenfalls Nachrichten absenden und so Daten verfälschen oder die Verarbeitung stören. Um dies zu verhindern wird eine Technik Namens \Gls{hmac} eingesetzt.
 Die eigentliche Nachricht \mint{html}| 4;25.1;71.1;10.2| wird dabei um einen Hash-Wert erweitert
-\mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2|
-
+\mint{html}|3A51266ABD432C1FB797DEDEE215FD16E42BAB627F104BCB6F4169EDE4544582:4;25.1;71.1;10.2| und die Nachricht mit \Gls{hmac} und den Messwerten wird an das \Gls{iot} Gateway geschickt.
  \section{Software}
  \subsection{Verwendete Bibliotheken}
 
@@ -327,7 +334,7 @@ Die folgende Parameter werden alle in der Datei settings.txt gespeichert:
 \item[paLevel] Funkstärke des NRF24 Moduls, erlaubte Werte sind 'low', 'med und 'high'
 \end{description}
 
-\subsection{Datenübertragung}
+\subsection{Datenübertragung}Durch die Verwendung des \Gls{hmac} wird die Nachricht stark vergrössert und erreicht um die Neunzig zeichen.
 Da die maximale Grösse eines Datenpaketes des NRF24 Moduls nur 32 Zeichen beträgt muss die gesamte Nachricht in mehreren Paketen übertragen werden.
 
 \begin{center}
@@ -372,7 +379,9 @@ Die Basis des MQTT Gateway bildet ein Arduino Mega\footnote{\url{https://store.a
     \captionof{figure}{Verdrahtung der Komponenten}
 \end{center}
 \subsection{Zugriffsschutz}
-Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft.
+Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft [\ref{funkAbsicherung}].
+
+Der Empfänger der Nachricht, welcher denselben geheimen Schlüssel wie der Sender verwendet, berechnet aus den übertragenen Daten ebenfalls den \Gls{hmac} und vergleicht den selbst berechneten Wert mit dem empfangenen Wert. Wenn diese beiden Werte nicht übereinstimmen so wird der Datensatz verworfen.
 \section{Software}
 Nachdem die Nachricht eines Sensors validiert wurde wird das Format in JSON umgewandelt und an ein MQTT Topic verschickt.
 \begin{center}
@@ -387,9 +396,24 @@ Nachdem die Nachricht eines Sensors validiert wurde wird das Format in JSON umge
 	\captionof{figure}{Sensor Datensatz in JSON Format} 
 	\label{json-example}
 \end{center}
+Alle Datensätze werden in ein gemeinsames Topic namens "/weather/" gespeichert. In einer frühen Version hatte ich für jede Kategorie von Messwerten (Lufttemperatur, Luftfeuchtigkeit etc.) ein eigenes Topic verwendet.  Dies war aber unpraktisch für die Weiterverarbeitung und wurde zu einem einzelnen Topic geändert.
+\begin{center}
+	\begin{minted}{arduino}
+char json[100];
+sprintf(json, "{\"ID\": \"%s\", \"Temp.Air\": %s, \"Hum.Air\": %s, \"Hum.Soil\": %s}", SensorId, Temperature, Humidity, SoilHumidity);
+if (!client.connected()) {
+  reconnect();
+}
+if (client.connected()) {
+  Serial.print("Send data to topic '/weather/' ");
+  client.publish("/weather/", json);
+  Serial.println(json);
+}
+\end{minted}
+\end{center}
 
 \subsection{Konfiguration}
-Das Gateway benötigt für die Berechnung des \Gls{HMAC} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
+Das Gateway benötigt für die Berechnung des \Gls{hmac} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
 \begin{center}
     \begin{minipage}[b]{0.45\textwidth}
     	Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
@@ -420,10 +444,17 @@ Für die Speicherung und Verarbeitung der gesammelten Sensordaten sind mehrere S
 \end{description}
 \section{Hardware}
 \section{MQTT Broker}
+Als MQTT Broker wird die Open Source Software Mosquitto \cite{mosquitto} verwendet.
 \subsection{Installation}
-\begin{minted}{Bash}
+Die Installation von Mosquitto sollte ebenfalls den Mosquitto-Client umfassen damit man nach der Installation diese direkt testen kann.
+\begin{minted}{shell}
 sudo apt-get install -y mosquitto mosquitto-clients
    \end{minted}
+ Um den Broker automatisch bei jedem Neustart zu starten muss der Service noch aktiviert werden.
+ \begin{minted}{shell}
+systemctl enable mosquitto.service
+ \end{minted}
+
 \section{Datenspeicherung}
   \begin{center}
     \includegraphics[width=\textwidth]{Bilder/InfluxDB-2.png}
@@ -431,27 +462,47 @@ sudo apt-get install -y mosquitto mosquitto-clients
     \captionof{figure}{Übersicht Influx Software}
     \source{\url{www.influxdata.com}}
    \end{center}
-   \subsection{Installation}
+   \subsection{Telegraf}
+Um die Daten aus dem Mosquitto Topic zu lesen und in die Datenbank zu schreiben wird die Software Telegraf \cite{telegraf} eingesetzt.
+\subsubsection{Installation}
+\begin{minted}{shell}
+
+\end{minted}
+\subsection{InfluxDB}
+   \subsubsection{Installation}
    Die Installationsquelle ist unterschiedlich für die verschiedenen Linux Distributionen. Wenn wie in meinem Fall die Raspian Distribution in der Version 'buster' verwendet wird kann das benötigte Repository mit folgenden Kommandos hinzugefügt werden:
- \begin{minted}[breaklines]{Bash}
+ \begin{minted}[breaklines]{shell}
 curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
 sudo apt install apt-transport-https
 echo "deb https://repos.influxdata.com/debian buster stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
 \end{minted}
 Die Installation ist danach schnell gemacht:
- \begin{minted}{Bash}
+ \begin{minted}{shell}
 sudo apt-get update && sudo apt-get install influxdb
 sudo systemctl unmask influxdb.service
    \end{minted}
    Danach muss der Service noch gestartet werden:
-    \begin{minted}{Bash}
+    \begin{minted}{shell}
 sudo systemctl start influxdb
    \end{minted}
-   \subsection{Datenbank einrichten}
-   
+   \subsubsection{Datenbank einrichten}
+{\color{red}Achtung: Standardmässig ist die Influx Datenbank ohne Authentifizierung eingerichtet. In einem offenen Umfeld sollte die standardmässige Authentifizierung eingeschaltet werden \cite{influxAuth}}
+
+Um eine Datenbank und einen Benutzer einzurichten verwendet man das Kommondozeilen Tool \mint{shell}|influx|
+ \begin{minted}{shell}
+Connected to http://localhost:8086 version 1.7.7
+InfluxDB shell version: 1.7.7
+> CREATE DATABASE weather_db
+> USE weather_db
+ >CREATE USER telegraf WITH PASSWORD '*******************'
+ >GRANT [READ,WRITE,ALL] ON weather_db TO telegraf
+ \end{minted}
+ Eine Spaltendefinition ist nicht nötig, die Spalten werden direkt aus den empfangenen Daten gebildet.
 \section{Visualisierung}
+Die Visualisierung der Daten wird über die Open Source Software Grafana \cite{grafana} durchgeführt.
 \subsection{Installation}
-    \begin{minted}[breaklines]{Bash}
+Grafana für den Raspberry Pi kann nicht über ein Repository installiert werden weshalb die aktuelle Version zuerst mit \mint{shell}|wget| heruntergeladen und danach entpackt wird.
+ \begin{minted}[breaklines]{shell}
 wget https://github.com/fg2it/grafana-on-raspberry/releases/download/v5.1.4/grafana_5.1.4_armhf.deb
 sudo apt-get install -y adduser libfontconfig1
 sudo dpkg -i grafana_5.1.4_armhf.deb
@@ -459,6 +510,51 @@ sudo systemctl enable grafana-server
 sudo systemctl start grafana-server
 sudo systemctl enable grafana-server.service
    \end{minted}
+   \subsection{Grafana Dashboard}
+Die Darstellung der Messwerte erfolgt in Grafana über Panels welche in einem Dashboard \cite{grafanaDashboard} zusammengefasst werden.
+\begin{center}
+   \includegraphics[width=17cm]{Bilder/Grafana-Dashboard.PNG}
+   \captionsetup{justification=centering}
+    \captionof{figure}{Grafana Dashboard}
+\end{center}
+
+\begin{center}
+    \begin{minipage}[t]{0.45\textwidth}
+        \centering
+        \includegraphics[width=7cm]{Bilder/Grafana-Datasource.PNG} % first figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{Grafana: Konfiguration Influx Datenquelle}
+    \end{minipage}
+    \begin{minipage}[t]{0.45\textwidth}
+Bevor ein Dashboard erstellt wird muss man die Datenquellen definieren. Hier ist die Konfiguration der Datenquelle welche aus der lokal installierten InfluxDB und der Datenbank weather{\_}db die Messwerte liest.
+    \end{minipage}
+\end{center}
+
+\begin{center}
+    \begin{minipage}[t]{0.45\textwidth}
+        \centering
+        \includegraphics[width=7cm]{Bilder/Grafana-Luft.PNG} % first figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{Grafana Dashboard: Panel Lufttemperatur}
+        
+        \includegraphics[width=7cm]{Bilder/Grafana-Panel-Konfiguration.PNG}
+    \end{minipage}
+    \begin{minipage}[t]{0.45\textwidth}
+Die Datenbankabfrage für jedes Panel kann direkt in der Benutzeroberfläche von Grafana erstellt werden. Dabei können die Mittelwerte über mehrere Messwerte gebildet werden oder auch nur der maximale Wert in einem bestimmten Zeitintervall bestimmt werden. In dem Weather Dashboard werden von allen drei Mess-Kategorien die höchsten Werte der letzten Tage dargestellt neben den Panels mit dem zeitlichen Verlauf.
+    \end{minipage}
+\end{center}
+
+\begin{center}
+    \begin{minipage}[t]{0.45\textwidth}
+        \centering
+        \includegraphics[width=7cm]{Bilder/Grafana-Feuchtigkeit.png} % second figure itself
+        \captionsetup{justification=centering}
+        \captionof{figure}{Grafana Dashboard: Panel Feuchtigkeit}
+    \end{minipage}
+    \begin{minipage}[t]{0.45\textwidth}
+       Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe gebildet, was sehr unverständlich sein kann. In der Konfiguration eines Panels kann deshalb im Feld "ALIAS BY" eine alternative Bezeichnung angegeben werden. In diesem Beispiel ist es \mint{shell}|Sensor $tag_ID| was dazu führt dass jeweils der Text "Sensor " und die ID des Sensors verwendet wird.
+    \end{minipage}
+\end{center}
 \chapter{Verwendete Bauteile}
 \section{ESP32 Mikrokontroller}
 \begin{center}
@@ -534,7 +630,9 @@ NRF24L01+ \footnote{https://www.bastelgarage.ch/bauteile/funk-wireless-lora/nrf2
     \bibitem{telegraf} Server Agent welcher Daten aus verschiedenen Quellen sammelt und weiterleitet \break \url{https://www.influxdata.com/time-series-platform/telegraf/}
     \bibitem{telegrafmqtt}MQTT Plugin für Telegraf\break \url{https://github.com/influxdata/telegraf/tree/master/plugins/inputs/mqtt_consumer}
     \bibitem{influx} InfluxDB, Open Source Zeitreihendatenbank \break \url{https://www.influxdata.com/products/influxdb-overview/}
+    \bibitem{influxAuth}Authentication and authorization in InfluxDB\break \url{https://docs.influxdata.com/influxdb/v1.7/administration/authentication_and_authorization/}
     \bibitem{grafana} Datenvisualierungs-Software Grafana\break \url{https://grafana.com/}
+    \bibitem{grafanaDashboard}Grafana Graph Panel \break \url{https://grafana.com/docs/features/panels/graph/}
   \end{thebibliography}
 %Index
 \addcontentsline{toc}{chapter}{Index}

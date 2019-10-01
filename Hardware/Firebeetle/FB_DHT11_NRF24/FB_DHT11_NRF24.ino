@@ -115,8 +115,6 @@ void setup() {
     key = (char*) malloc(key_len * sizeof(char));
     // Copy it over
     keyString.toCharArray(key, key_len);
-    Serial.print("key: "),
-                 Serial.println(key);
   }
   keyFile.close() ;
 
