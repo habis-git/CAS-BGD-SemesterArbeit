@@ -1,8 +1,8 @@
 \documentclass[
   12pt, % Fontsize
   a4paper, % papersize
-  twoside, % For twosided documents
-  openany, % Chapters start always at a odd page
+  oneside, % For twosided documents
+  openany, 
   numbers=noenddot, % No final dots in Sectionnumbers, e.g 1.2 instead of 1.2.
   BCOR=5mm, % Correction length for lost space from binding
   parskip=half*, %No indent but spacing between paragraphs
@@ -34,6 +34,7 @@
 \usepackage[singlelinecheck=off]{caption}
 \usepackage{siunitx} % Scientific Units and number setting
 \usepackage{listings} % For Program-Code
+\usepackage{enumitem}
 
 \usepackage{minted}
 \setminted[arduino]{
@@ -212,11 +213,19 @@ Das realisierte Netzwerk besteht aus mehreren Sensoren, die Messdaten über Funk
   \end{center}
   Schlussendlich werden die Daten visualisiert und können über einen Browser betrachtet werden. Beim erreichen oder unterschreiten selbst definierter Schwellwerte kann ein Alarm ausgelöst werden.
 \chapter{Einleitung}
-Der gesamte Code und die Dokumentation dieser Arbeit ist auf Github unter folgendem Link zu finden: \url{https://github.com/habis-git/CAS-BGD-SemesterArbeit} und wird auch nach Abschluss dieser Arbeit weiterentwickelt. Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern, sowie die leichte Beschaffung auch innerhalb der Schweiz, ausgewählt. Der Arduino Mega als MQTT Gateway und der Raspberry Pi 2 für die Linux Plattform waren bereits von früheren Projekten vorhanden und wurden deshalb in diesem Projekt eingesetzt.
+Der gesamte Code und die Dokumentation dieser Arbeit ist auf Github unter folgendem Link zu finden:
+
+ \url{https://github.com/habis-git/CAS-BGD-SemesterArbeit} 
+ 
+ und wird auch nach Abschluss dieser Arbeit weiterentwickelt. Die Komponenten wurden durch das Vorhandensein von Bibliotheken und Treibern, sowie die leichte Beschaffung auch innerhalb der Schweiz, ausgewählt. Der Arduino Mega als MQTT Gateway und der Raspberry Pi 2 für die Linux Plattform waren bereits von früheren Projekten vorhanden und wurden deshalb in diesem Projekt eingesetzt.
 
 Der Aufbau dieses Dokumentes folgt der Übersichtsgrafik  \ref{overview} mit den Sensoren auf der linken Seite und der Visualisierung auf der Rechten Seite und dementsprechend werden die Sensoren zuerst beschrieben und die Visualisierung findet sich gegen Ende des Dokumentes.
 
-Diese Dokumentation hat nicht den Anspruch den Aufbau des Projektes in jedem Punkt zu erläutern, gewisse Arbeiten wie z. Bsp. Lötarbeiten oder auch Konfigurationen auf Betriebssystem Ebene fehlen. Die Übersicht der Webseiten [\ref{links}] welche die nötigen Informationen dieses Projektes lieferten, kann bei solchen Fragen weiterhelfen.
+Diese Dokumentation hat nicht den Anspruch den Aufbau des Projektes in jedem Punkt zu erläutern, gewisse Arbeiten wie z. Bsp. Lötarbeiten oder auch Konfigurationen auf Betriebssystem Ebene fehlen. Die Übersicht der Webseiten [\ref{links}] welche die nötigen Informationen für dieses Projektes lieferten, kann bei solchen Fragen weiterhelfen.
+
+Das ursprüngliche LaTeX Template für dieses Dokument stammt aus diesem Projekt:
+
+\url{https://gitlab.ti.bfh.ch/bfh-latex/bfh-latex}
 
 \chapter{Sensor Plattform}
 \section{Mikrokontroller}
@@ -425,10 +434,28 @@ if (ok) {
 \end{minted}
 \chapter{MQTT Gateway}
 \section{Übersicht}
-Die Aufgabe des \cite{mqtt} Gateways ist es die Messdaten, welche über Funk gesendet werden, zu empfangen und an den \cite{mqtt} Broker weiterzuleiten. Dazu ist es mit einem Funkmodul und einer Ethernet Schnittstelle ausgerüstet.
+\begin{center}
+    \begin{minipage}[t]{0.3\textwidth}
+\includegraphics[width=5cm, left, valign=t]{Bilder/ArduinoWithEthernetShield.jpg}
+	\end{minipage}\hfill
+    \begin{minipage}[t]{0.7\textwidth}
+    Die Aufgabe des \Gls{mqtt} Gateways ist es die Messdaten, welche über Funk gesendet werden, zu empfangen und an den \Gls{mqtt} Broker weiterzuleiten. Dazu ist es mit einem Funkmodul und einer Ethernet Schnittstelle ausgerüstet.
+    \end{minipage}
+\end{center}
+
 \section{Hardware}
-Die Basis des MQTT Gateway bildet ein Arduino Mega\footnote{\url{https://store.arduino.cc/arduino-mega-2560-rev3}} welcher mit einem Ethernet Shield \footnote{\url{https://www.bastelgarage.ch/ethernet-shield-spi-w5100-fur-arduino}} kombiniert wird. Die Funkverbindung wird wie bei den Sensoren durch ein NRF24 [\ref{nrf24}] Modul hergestellt.
+Die Basis des MQTT Gateway bildet ein Arduino Mega [\ref{arduino}] welcher mit einem Ethernet Shield kombiniert wird. Die Funkverbindung wird wie bei den Sensoren durch ein NRF24 [\ref{nrf24}] Modul hergestellt.
 \subsection{Aufbau}
+Die Stromversorgung des Funkmoduls erfolgt über VCC (3.3V) und GND. 
+
+Die zusätzlichen Pins werden wie folgt mit dem Arduino verbunden (Links -> Pin Arduino, Rechts -> Anschluss Funkmodul):
+\begin{itemize}[noitemsep,topsep=0pt,parsep=0pt,partopsep=0pt]
+\item 8 - CSN
+\item 7 - CD
+\item 52 - SCK
+\item 51 -  MOSI
+\item 50 - MISO
+\end{itemize}
 \begin{center}
     \includegraphics[width=12cm, left]{Bilder/MQTT-Gateway-Design_Steckplatine.png}
     \captionof{figure}{Verdrahtung der Komponenten}
@@ -437,7 +464,72 @@ Die Basis des MQTT Gateway bildet ein Arduino Mega\footnote{\url{https://store.a
 Jede empfangene Nachricht wird durch die Valdierung des HMAC (\Gls{hmac}) sowohl auf einen berechtigten Absender, als auch auf unverfälschte Daten überprüft [\ref{funkAbsicherung}].
 
 Der Empfänger der Nachricht, welcher denselben geheimen Schlüssel wie der Sender verwendet, berechnet aus den übertragenen Daten ebenfalls den \Gls{hmac} und vergleicht den selbst berechneten Wert mit dem empfangenen Wert. Wenn diese beiden Werte nicht übereinstimmen so wird der Datensatz verworfen.
+\subsection{Warum kein TLS?}
+Die etablierten Verschlüsselungstechniken wie Transport Layer Security (oder SSL) können mit \Gls{iot} Geräten nicht verwendet werden. Ein Verbindungsaufbau mit TLS ist ein Zeit- und Rechenintensiver Prozess welcher ein vielfaches der Übertragungsdauer der Daten in Anspruch nehmen würde. Der Stromverbrauch wäre mit einer solchen Technik hoch und die Laufzeiten der Geräte zu gering.
 \section{Software}
+ \subsection{Verwendete Bibliotheken}
+
+  \begin{description}
+\item[pubsubclient] Anbindung eines MQTT Brokers \cite{pubsubclient}
+\item[ethernet] Benutzung einer Ethernet Verbindung \cite{ethernet}
+\item[NRF24] Verwendung des NRF24 Funkmoduls \cite{nrf24Arduino}
+\item[cryptosuite] SHA und HMAC Berechnungen \cite{cryptosuite}
+ \end{description}
+ \subsection{Empfang der Daten}
+ Um von allen Sensoren Daten empfangen zu können wird auf jeder Adresse eines Sensors ein Kanal geöffnet.
+ \begin{minted}{arduino}
+  Serial.println(F("Open pipes"));
+  for (int i = 1; i < pipes_length; i++) {
+    radio.openReadingPipe(i, pipes[i]);
+    Serial.print(F("Listening to pipe: "));
+    char c_address[8];
+    sprintf(c_address, "-> %s", pipes[i]);
+    Serial.print(c_address);
+    Serial.print(" on channel ");
+    Serial.println(i);
+  }
+ \end{minted}
+ Sobald ein Paket empfangen wird, extrahiert das Gateway die Anzahl Pakete pro Nachricht und fordert das nächste fehlende Paket vom Sensor an.
+ \begin{minted}{arduino}
+ byte data[32];
+      if (!allReceived && radio.available()) {
+        radio.read( &data, sizeof(data) );//place received data in byte structure
+        byte pkt = data[0];  //part of header, packet number received
+
+        for (int i = 2; i < 32; i++) {
+          received[(pkt - 1) * 30 + (i - 2)] = data[i];
+        }
+        delay(5);
+        radio.stopListening();    //stop listening to transmit response of packet received.
+
+        byte* address = pipes[pipe_num];
+        radio.openWritingPipe(address);
+        bool ok = radio.write(&pkt, sizeof(pkt));  //send packet number back to confirm
+\end{minted}
+Sobald die gesamte Nachricht empfangen wurde wird der \Gls{hmac} mit dem durch das Gateway selbst berechneten Wert verglichen:
+\begin{minted}{arduino}
+char* hmac = strtok(received, ":");
+char* data = strtok(NULL, ":");
+
+Sha256.initHmac(key, keyLength);
+Sha256.print(data);
+ uint8_t* calculatedHmac = Sha256.resultHmac();
+
+char calculatedHmac_char[hmacSize * 2];
+for (int cnt = 0; cnt < hmacSize; cnt++)
+{
+   // convert byte to its ascii representation
+    sprintf(&calculatedHmac_char[cnt * 2], "%02X", calculatedHmac[cnt]);
+ }
+
+uint8_t authorizationCheck = strcmp(calculatedHmac_char, hmac);
+
+ if (authorizationCheck != 0) {
+   Serial.println("Hmac not matching, not authorized or tampered message! Message rejected");
+ }
+\end{minted}
+Falls der empfangene Wert und der berechnete Wert nicht übereinstimmen wird die Nachricht verworfen.
+ \subsection{Senden der Daten an den MQTT Broker}
 Nachdem die Nachricht eines Sensors validiert wurde, wird das Format in JSON umgewandelt und an ein MQTT Topic verschickt.
 \begin{center}
 	\begin{minted}{js}
@@ -468,11 +560,11 @@ if (client.connected()) {
 \end{center}
 
 \subsection{Konfiguration}
-Das Gateway benötigt für die Berechnung des \Gls{hmac} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien hochzuladen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
+Das Gateway benötigt für die Berechnung des \Gls{hmac} den gleichen Schlüssel wie der Sensor. Leider bietet der Arduino nicht die Möglichkeit Dateien in einem eigenen Speicherbereich abzulegen. Der benötigte geheime Schlüssel wird deshalb in der Datei keyFile.h als String definiert. So kann der Code weiterhin in dem Versionskontrollsystem hinterlegt werden ohne den geheimen Schlüssel preisgeben zu müssen.
 \begin{center}
-    \begin{minipage}[b]{0.45\textwidth}
+    \begin{minipage}[b]{0.4\textwidth}
     	Die Datei keyFile.h enthält nur eine Zeile mit der Deklaration des Schlüssels \mint{html}|String key_str  = "geheimerSchlüssel";|
-    \end{minipage}
+    \end{minipage}\hfill
     \begin{minipage}[b]{0.4\textwidth}
 	\begin{forest}
 		    for tree={font=\sffamily, grow'=0,
@@ -498,6 +590,7 @@ Für die Speicherung und Verarbeitung der gesammelten Sensordaten sind mehrere S
 \item[Datentransfer] Um die Daten aus einer (oder mehreren) MQTT Queue in eine Datenbank zu transferieren wird Telegraf \cite{telegraf} mit dem MQTT Plugin benutzt \cite{telegrafmqtt}
 \end{description}
 \section{Hardware}
+Als Plattform für Mosquitto \cite{mosquitto}, Telegraf \cite{telegraf}, InfluxDB \cite{influx} und Grafana \cite{grafana} dient ein Raspberry Pi2 Model B [\ref{raspberry}].
 \section{MQTT Broker}
 Als MQTT Broker wird die Open Source Software Mosquitto \cite{mosquitto} verwendet.
 \subsection{Installation}
@@ -509,7 +602,11 @@ sudo apt-get install -y mosquitto mosquitto-clients
  \begin{minted}{shell}
 systemctl enable mosquitto.service
  \end{minted}
+ 
+ \subsection{Warum kein TLS?}
+Eigentlich wollte ich SSL mit Client-Zertifikaten für die Verbindung zwischen dem MQTT Gateway und dem MQTT Broker verwenden. Beispiele dazu kann man im Internet finden, sogar eine direkte Verbindung zwischen ESP32 Geräten und einem MQTT Broker mit SSL Mutual Auth ist möglich [\cite{espssl}, \cite{mosquittoSSL}].
 
+Allerdings stellte sich heraus, dass die Ethernet Bibliothek kein SSL unterstützt. Die WI-FI Bibliothek unterstützt dies hingegen und es gibt Tips wie man mit einigen Klassen aus der WI-FI Implementierung die Ethernet Bibliothek anpassen könnte. Ich habe allerdings aus Zeitgründen dieses Thema nicht weiter verfolgt.
 \section{Datenspeicherung}
 Die Messdaten werden in der Zeitreihendatenbank Influx \cite{influx} gespeichert. Eine Zeitreihendatenbank erlaubt das schnelle schreiben von Messwerten und kann automatisch ältere Datensätze entfernen um den Platzbedarf nicht zu gross werden zu lassen.
   \begin{center}
@@ -538,7 +635,7 @@ In der erzeugten Datei muss das Einlesen der MQTT Queue im Abschnitt ''[[inputs.
     data_format = "json"
     tag_keys = ["ID"]
 \end{minted}
-Auch das schreiben der Daten in die Influx Datenbank muss im Abschnitt ''[[outputs.influxdb]]'' konfiguriert werden.
+Auch das Schreiben der Daten in die Influx Datenbank muss im Abschnitt ''[[outputs.influxdb]]'' konfiguriert werden.
 \begin{minted}{shell}
 [[outputs.influxdb]]
   urls = ["http://localhost:8086"]
@@ -581,7 +678,7 @@ InfluxDB shell version: 1.7.7
  \end{minted}
  Eine Spaltendefinition ist nicht nötig, die Spalten werden direkt aus den empfangenen Daten gebildet.
 \section{Visualisierung}
-Die Visualisierung der Daten wird über die Open Source Software Grafana \cite{grafana} durchgeführt.
+Die Visualisierung der Daten wird über die Open Source Software Grafana \cite{grafana} durchgeführt. Mit dieser Software können nicht nur Zeitreihen dargestellt werden, es ist auch möglich bei der Überschreitung von Schwellwerten Alarm auszulösen.
 \subsection{Installation}
 Grafana für den Raspberry Pi kann nicht über ein Repository installiert werden, weshalb die aktuelle Version zuerst mit \mint{shell}|wget| heruntergeladen und danach entpackt wird.
  \begin{minted}[breaklines]{shell}
@@ -603,7 +700,7 @@ Die Darstellung der Messwerte erfolgt in Grafana über Panels, welche in einem D
 \begin{center}
     \begin{minipage}[t]{0.45\textwidth}
         \centering
-        \includegraphics[width=7cm, valign=t]{Bilder/Grafana-Datasource.PNG} % first figure itself
+        \includegraphics[width=5cm, valign=t]{Bilder/Grafana-Datasource.PNG} % first figure itself
         \captionsetup{justification=centering}
         \captionof{figure}{Grafana: Konfiguration Influx Datenquelle}
     \end{minipage}
@@ -632,7 +729,13 @@ Die Datenbankabfrage für jedes Panel kann direkt in der Benutzeroberfläche von
 Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe gebildet, was sehr unverständlich sein kann. In der Konfiguration eines Panels kann deshalb im Feld ''ALIAS BY'' eine alternative Bezeichnung angegeben werden. In diesem Beispiel ist es \mint{js}|Sensor $tag_ID| was dazu führt, dass jeweils der Text ''Sensor'' und die Id des Sensors verwendet wird.
     \end{minipage}
 \end{center}
-\chapter{Verwendete Bauteile}
+\section{Ersatz für Kafka}
+Ursprünglich war geplant zwischen dem MQTT Broker und InfluxDB den Apache Kafka Message Bus mit Streams zu verwenden. Die Installation von Zookeper und Kafka auf dem Raspberry Pi verlief problemlos und die Software lies sich starten und testen. Um die Nachrichten aus dem MQTT Topic zu lesen und in ein Kafka Topic zu schreiben kann man das Kafka Connect Framework mit dem Kafka Connect MQTT Connector verwenden \cite{connect}. Allerdings ist der MQTT Connector nicht frei verfügbar (im Gegensatz zu Kafka selber) und kann kostenlos nur mit einer 30 Tage Testlizenz betrieben werden. Zudem erwies sich Kafka Connect als sehr Resourcen intensiv. In der Default Einstellung wird von 2GB Ram alleine für Kafka Connect ausgegangen. Da der Raspberry Pi nur 1GB Ram besitzt musste ich diesen Wert reduzieren. Der Connector lies sich danach starten, es dauert aber sehr lange bis der MQTT Adapter bereit war. Aufgrund dieser Erfahrungen habe ich nach alternativen gesucht und bin dabei bei Telegraf gelandet. Meine Erfahrungen damit sind ausgesprochen positiv, der Speicherbedarf ist viel geringer und die Geschwindigkeit höher. 
+
+Anstatt den MQTT Connector zu verwenden wäre es natürlich auch mit einem eigenen Programm oder Skript möglich gewesen die Nachrichten aus dem MQTT Broker zu lesen und in ein Kafka Topic zu schreiben. Dies hätte jedoch Zeit des Projektes verbraucht welche ich lieber für andere Punkte aufwenden wollte.
+{\let\clearpage\relax \chapter{Fazit}}
+Die in diesem CAS behandelten Komponenten Mosquitto und Influx können sehr gut für \Gls{iot} Projekte eingesetzt werden. Insbesondere die gute Performance auf der sehr schwachen Hardware in diesem Projekt (Raspberry Pi 2)  war überraschend. Als negative Erfahrung gilt für mich Kafka Connect und insbesondere der MQTT Connector. Nicht nur die Installation war mühsam, auch die Geschwindigkeit lag nicht im akzeptablen Bereich. Der Unterschied zwischen dem in Go geschriebenen Telegraf und der Java Applikation Kafka Connect war massiv.
+{\let\clearpage\relax \chapter{Verwendete Bauteile}}
 \section{ESP32 Mikrokontroller}
 \begin{minipage}[t]{0.5\linewidth}
 	\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/Firebeetle.jpg}
@@ -644,13 +747,37 @@ Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe 
 	Als Basis für alle Sensoren ist der Firebeetle\footnotemark \cite{firebeetle} sehr gut geeignet. Leider sind noch nicht alle Bibliotheken, welche für den Vorgänger ESP8266 existieren, für den ESP32 adaptiert worden. Vor einem Projekt sollte man also prüfen ob die benötigten Bibliotheken in der richtigen Version vorhanden sind.
 \end{minipage}
 \footnotetext{https://www.bastelgarage.ch/firebeetle-esp32-iot-mikrocontroller-mit-wifi}
-
+\section{Arduino}
+\begin{minipage}[t]{0.5\linewidth}\label{arduino}
+	\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/ARDUINO_MEGA_A01.png}
+    \captionsetup{justification=raggedright}
+    \captionof{figure}{Arduino Mega}
+    \includegraphics[ width=0.75\linewidth, valign=t]{Bilder/EthernetShield.jpg}
+     \captionsetup{justification=raggedright}
+    \captionof{figure}{Ethernet Shield für den Arduino}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Ein Arduino Mega \footnotemark zusammen mit dem Ethernet Shield (Shield = Erweiterung) W5100 \footnotemark bildet das MQTT Gateway. Für die Kommunikation mit den Sensoren ist ein NRF24 Funkmodul zuständig [\ref{nrf24Radio}].
+\end{minipage}
+\footnotetext{https://store.arduino.cc/arduino-mega-2560-rev3}
+ \footnotetext{https://www.bastelgarage.ch/ethernet-shield-spi-w5100-fur-arduino}
+\section{Raspberry Pi}
+\begin{minipage}[t]{0.5\linewidth}\label{raspberry}
+	\includegraphics[ width=0.75\linewidth, valign=t]{Bilder/RaspberryPi2.jpg}
+    \captionsetup{justification=raggedright}
+    \captionof{figure}{Raspberry Pi 2}
+	\end{minipage}%
+	\begin{minipage}[t]{0.5\linewidth}
+	Die Software für die Speicherung der Daten und die Visualisierung wurde auf einem Raspberry Pi 2 installiert \footnotemark. Obwohl dieses Model bereits älter ist und nur 1GB Ram besitzt ist die Leistung für dieses Projekt ausreichend.
+\end{minipage}
+ \footnotetext{https://www.pi-shop.ch/raspberry-pi-2-model-b-v1-2-1-gb-ram}
  \section{Sensoren}
  \subsection{Temperatur und Luftfeuchtigkeit}
  \subsubsection{DHT22}\label{DHT22}
 \begin{minipage}[t]{0.5\linewidth}
 		\centering
     		\includegraphics[width=\compImgSize, left, valign=t]{Bilder/DHT22.jpg}
+    		 \captionsetup{justification=raggedright}
     		\captionof{figure}{Temperatur und Luftfeuchtigkeitsmesser DHT22}
 	\end{minipage}
 	\begin{minipage}[t]{0.5\linewidth}
@@ -662,6 +789,7 @@ Die Legende wird normalerweise aus den Werten der Datenquelle und der Zeitreihe 
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
 		\includegraphics[ width=\compImgSize, left, valign=t]{Bilder/DHT11.jpg} 
+		 \captionsetup{justification=raggedright}
 		 \captionof{figure}{DHT11 Luft- und Feuchtigkeitssensor}
 	\end{minipage}
 	\begin{minipage}[t]{0.5\linewidth}
@@ -681,7 +809,7 @@ Der Bodenfeuchtesensor V1.2 \footnotemark nimmt die Messung kapazitiv vor, d.h. 
  \footnotetext{https://www.bastelgarage.ch/bauteile/sensoren/kapazitiver-bodenfeuchtesensor-v1-2}
  
 \subsection{Funk}
-\begin{minipage}[t]{0.5\linewidth}
+\begin{minipage}[t]{0.5\linewidth}\label{nrf24Radio}
         \includegraphics[width=\compImgSize, valign=t]{Bilder/NRF24.jpg} % second figure itself
         \captionsetup{justification=raggedright}
         \captionof{figure}{NRF24L01+ Funkmodul}
@@ -694,6 +822,8 @@ Das Funkmodul NRF24L01+ \footnotemark funkt im 2,4GHz Band und benötigt wenig S
 % List of Figures
 \listoffigures
 % List of Tables
+\begingroup
+\let\clearpage\relax
 \listoftables
 % Glossary
 \printglossary
@@ -713,6 +843,10 @@ Das Funkmodul NRF24L01+ \footnotemark funkt im 2,4GHz Band und benötigt wenig S
     \bibitem{arduino}Arduino Herstellerseite mit der gleichnamigen IDE und vielen Bibliotheken und Tutorials\break \url{https://www.arduino.cc/}
     \bibitem{firebeetle}Herstellerseite des Firebeetle Mikrokontrollers\break \url{https://www.dfrobot.com/product-1590.html}
     \bibitem{uploader}Erweiterung für die Arduino IDE um Dateien in den Flash Speicher des ESP32 zu laden \break \url{https://github.com/me-no-dev/arduino-esp32fs-plugin}
+    \bibitem{pubsubclient}Arduino Client for MQTT \break \url{https://github.com/knolleary/pubsubclient}
+    \bibitem{ethernet}Arduino Ethernet library\break \url{https://www.arduino.cc/en/Reference/Ethernet}
+    \bibitem{nrf24Arduino}Arduino driver for nRF24L01 2.4GHz Wireless Transceiver \break \url{https://github.com/maniacbug/RF24}
+    \bibitem{cryptosuite}SHA1 / SHA256 and HMAC-SHA1 / HMAC-SHA256 Hash library\break \url{http://spaniakos.github.io/Cryptosuite/}
     \bibitem{mosquitto}Open Source MQTT Broker Mosquitto\break \url{https://mosquitto.org/}
     \bibitem{telegraf} Server Agent welcher Daten aus verschiedenen Quellen sammelt und weiterleitet \break \url{https://www.influxdata.com/time-series-platform/telegraf/}
     \bibitem{telegrafmqtt}MQTT Plugin für Telegraf\break \url{https://github.com/influxdata/telegraf/tree/master/plugins/inputs/mqtt_consumer}
@@ -720,11 +854,14 @@ Das Funkmodul NRF24L01+ \footnotemark funkt im 2,4GHz Band und benötigt wenig S
     \bibitem{influxAuth}Authentication and authorization in InfluxDB\break \url{https://docs.influxdata.com/influxdb/v1.7/administration/authentication_and_authorization/}
     \bibitem{grafana} Datenvisualierungs-Software Grafana\break \url{https://grafana.com/}
     \bibitem{grafanaDashboard}Grafana Graph Panel \break \url{https://grafana.com/docs/features/panels/graph/}
-    \bibitem{radioPower}{Design of Wireless Sensors for IoT with Energy
-Storage and Communication Channel Heterogeneity\break \url{https://www.mdpi.com/1424-8220/19/15/3364/pdf}}
+    \bibitem{radioPower}Design of Wireless Sensors for IoT with Energy Storage and Communication Channel Heterogeneity\break \url{https://www.mdpi.com/1424-8220/19/15/3364/pdf}
+    \bibitem{connect}Kafka Connect MQTT Connector \break  \url{https://docs.confluent.io/current/connect/kafka-connect-mqtt/}
+    \bibitem{espssl}ESP32 MQTT Library \break \url{https://github.com/espressif/esp-mqtt}
+    \bibitem{mosquittoSSL}Mosquitto SSL Configuration -MQTT TLS Security\break \url{http://www.steves-internet-guide.com/mosquitto-tls/}
   \end{thebibliography}
 %Index
 \addcontentsline{toc}{chapter}{Index}
 %\printindex
 % Appendices
+\endgroup
 \end{document}
